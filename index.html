@@ -1,886 +1,3046 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WC2026 — The Analyst's Slate</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{
-  --night:#0B1322;        /* stadium night */
-  --panel:#111D31;        /* card slate */
-  --panel-2:#16243C;      /* raised slate */
-  --line:#22324E;         /* hairline */
-  --chalk:#E9EEF7;        /* primary text */
-  --muted:#8DA0BF;        /* secondary text */
-  --amber:#F5B83D;        /* scoreboard amber — predictions */
-  --hit:#41C98A;          /* exact / correct */
-  --part:#5B8DEF;         /* right outcome, wrong score */
-  --miss:#E0564F;         /* wrong call */
-  --display:'Oswald', 'Arial Narrow', sans-serif;
-  --body:'Inter', system-ui, -apple-system, sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  background:var(--night);
-  background-image:
-    radial-gradient(1200px 500px at 50% -200px, rgba(245,184,61,.07), transparent 60%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 80px, transparent 80px 160px);
-  color:var(--chalk);
-  font-family:var(--body);
-  font-size:14px;
-  line-height:1.5;
-  min-height:100vh;
-}
-.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
-
-/* ---------- header ---------- */
-header{padding:34px 0 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
-.eyebrow{font-family:var(--display);font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--amber);font-weight:500}
-h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,5vw,46px);letter-spacing:.01em;text-transform:uppercase;line-height:1.05;margin-top:6px}
-h1 .thin{font-weight:400;color:var(--muted)}
-.sub{color:var(--muted);margin-top:8px;max-width:640px}
-.formline{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px}
-.stat{min-width:96px}
-.stat .num{font-family:var(--display);font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
-.stat .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px}
-.stat.hit .num{color:var(--hit)} .stat.part .num{color:var(--part)} .stat.miss .num{color:var(--miss)} .stat.amber .num{color:var(--amber)}
-
-/* ---------- tabs ---------- */
-nav{display:flex;gap:4px;margin:14px 0 22px;border-bottom:1px solid var(--line)}
-nav button{
-  background:none;border:none;color:var(--muted);cursor:pointer;
-  font-family:var(--display);font-size:14px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
-  padding:12px 16px;border-bottom:2px solid transparent;transition:color .15s;
-}
-nav button:hover{color:var(--chalk)}
-nav button.active{color:var(--amber);border-bottom-color:var(--amber)}
-nav button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
-
-/* ---------- filters ---------- */
-.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
-.filters select,.filters input{
-  background:var(--panel);border:1px solid var(--line);color:var(--chalk);
-  padding:8px 12px;border-radius:6px;font-family:var(--body);font-size:13px;
-}
-.filters input{flex:1;min-width:160px}
-.filters select:focus,.filters input:focus{outline:1px solid var(--amber);border-color:var(--amber)}
-
-/* ---------- fixtures ---------- */
-.dayhdr{
-  font-family:var(--display);font-size:13px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--muted);margin:26px 0 10px;display:flex;align-items:center;gap:12px;
-}
-.dayhdr::after{content:'';flex:1;height:1px;background:var(--line)}
-.match{
-  background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden;
-}
-.match.played{border-left:3px solid var(--line)}
-.match.v-exact{border-left:3px solid var(--hit)}
-.match.v-outcome{border-left:3px solid var(--part)}
-.match.v-wrong{border-left:3px solid var(--miss)}
-.mrow{display:grid;grid-template-columns:52px 1fr auto 1fr 150px;gap:10px;align-items:center;padding:14px 16px;cursor:pointer}
-.mrow:hover{background:var(--panel-2)}
-.gbadge{
-  font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.08em;
-  color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:3px 0;text-align:center;
-}
-.team{display:flex;align-items:center;gap:9px;font-family:var(--display);font-size:16px;font-weight:500;letter-spacing:.03em}
-.team.right{justify-content:flex-end;text-align:right}
-.team .flag{font-size:20px;line-height:1}
-.scorebox{display:flex;flex-direction:column;align-items:center;min-width:86px}
-.score{font-family:var(--display);font-weight:700;font-size:23px;font-variant-numeric:tabular-nums;letter-spacing:.06em}
-.score.pending{color:var(--muted);font-weight:400}
-.stamp{
-  font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--amber);
-  border:1px dashed rgba(245,184,61,.55);border-radius:4px;padding:1px 8px;margin-top:4px;
-  transform:rotate(-2deg);white-space:nowrap;
-}
-.stamp.locked{color:var(--muted);border-color:rgba(141,160,191,.4);transform:rotate(0)}
-.syncbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--muted)}
-.syncbar b{color:var(--chalk)}
-.live-pill{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:.12em;color:#0B1322;background:var(--amber);border-radius:3px;padding:1px 6px;animation:pulse 1.6s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
-@media (prefers-reduced-motion: reduce){.live-pill{animation:none}}
-.autotag{font-size:9.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
-.statstrip{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:14px}
-.statline{display:flex;justify-content:space-between;gap:10px;font-family:var(--display);font-size:13px;letter-spacing:.04em;margin:2px 0}
-.statlbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);align-self:center}
-.possbar{height:7px;border-radius:4px;background:var(--line);overflow:hidden;margin:8px 0 4px}
-.possbar div{height:100%;background:var(--amber)}
-.possnum{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.reason.locked{border-left-color:var(--line);color:var(--muted)}
-.reason.locked b{color:var(--muted)}
-.meta{text-align:right;font-size:11px;color:var(--muted);line-height:1.45}
-.verdict{font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
-.verdict.exact{color:var(--hit)} .verdict.outcome{color:var(--part)} .verdict.wrong{color:var(--miss)}
-
-/* ---------- expand panel ---------- */
-.panel{display:none;border-top:1px solid var(--line);padding:16px 18px 20px;background:rgba(0,0,0,.18)}
-.match.open .panel{display:block}
-.reason{color:var(--muted);font-size:13px;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--amber)}
-.reason b{color:var(--amber);font-weight:600}
-.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.field label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.field input,.field textarea{
-  width:100%;background:var(--night);border:1px solid var(--line);color:var(--chalk);
-  padding:8px 10px;border-radius:6px;font-family:var(--body);font-size:13px;
-}
-.field textarea{min-height:54px;resize:vertical}
-.field input:focus,.field textarea:focus{outline:1px solid var(--amber);border-color:var(--amber)}
-.scoreinputs{display:flex;align-items:center;gap:8px}
-.scoreinputs input{width:58px;text-align:center;font-family:var(--display);font-size:18px;font-weight:600}
-.panel .actions{display:flex;gap:10px;margin-top:14px;align-items:center;flex-wrap:wrap}
-button.primary{
-  background:var(--amber);color:#231A05;border:none;border-radius:6px;padding:9px 20px;cursor:pointer;
-  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;
-}
-button.primary:hover{filter:brightness(1.08)}
-button.ghost{
-  background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:8px 16px;cursor:pointer;
-  font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
-}
-button.ghost:hover{color:var(--chalk);border-color:var(--muted)}
-.savedmsg{color:var(--hit);font-size:12px}
-
-/* ---------- groups ---------- */
-.groupgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
-.gcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
-.gcard h3{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px}
-.gcard h3 span{color:var(--amber)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{font-family:var(--display);font-weight:500;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 5px;border-bottom:1px solid var(--line)}
-th:first-child{text-align:left}
-td{padding:6px 5px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(34,50,78,.5)}
-td.t{text-align:left;font-family:var(--display);font-size:14px;letter-spacing:.02em}
-tr:last-child td{border-bottom:none}
-td .flag{margin-right:7px}
-.pick{
-  display:inline-block;font-family:var(--display);font-size:10px;font-weight:600;color:var(--amber);
-  border:1px dashed rgba(245,184,61,.5);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;
-}
-.qline{font-size:11px;color:var(--muted);margin-top:8px}
-
-/* ---------- accuracy ---------- */
-.acc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
-.acc-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
-.acc-card .num{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
-.acc-card .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:5px}
-.section-h{font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:28px 0 12px}
-.lesson{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:8px;padding:12px 16px;margin-bottom:8px;font-size:13px;color:var(--chalk)}
-.lesson .tag{font-family:var(--display);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:2px}
-.miss-row{display:flex;justify-content:space-between;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:7px;font-size:13px;align-items:center}
-.miss-row .delta{font-family:var(--display);font-weight:600;color:var(--miss);white-space:nowrap}
-.notebook{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--chalk);padding:14px;font-family:var(--body);font-size:13px;min-height:120px;resize:vertical}
-.empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--line);border-radius:10px}
-footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
-.loading{position:fixed;inset:0;background:var(--night);display:flex;align-items:center;justify-content:center;z-index:50;font-family:var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--amber);font-size:13px}
-@media (max-width:680px){
-  .mrow{grid-template-columns:40px 1fr auto 1fr;gap:7px}
-  .meta{display:none}
-  .team{font-size:13.5px}
-  .team .flag{font-size:16px}
-}
-@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
-</style>
-</head>
-<body>
-<div class="loading" id="loading">Loading the slate…</div>
-<div class="wrap">
-
-<header>
-  <div class="eyebrow">FIFA World Cup 26 · USA · Canada · Mexico · 11 Jun – 19 Jul</div>
-  <h1>The Analyst's Slate <span class="thin">/ Group Stage</span></h1>
-  <p class="sub">48 teams, 12 groups, 72 group matches. I publish each call on a rolling 7-day window — only matches kicking off within the next seven days carry a stamped prediction, so every call reflects the latest form, fitness and group maths. Log the real results and I keep score on myself.</p>
-  <div class="formline" id="headstats"></div>
-</header>
-
-<nav>
-  <button class="active" data-tab="fixtures">Fixtures &amp; Calls</button>
-  <button data-tab="groups">Groups &amp; Tables</button>
-  <button data-tab="accuracy">Accuracy &amp; Lessons</button>
-</nav>
-
-<div id="tab-fixtures">
-  <div class="syncbar">
-    <button class="ghost" id="syncbtn">⟳ Sync scores now</button>
-    <span id="syncmsg">Scores auto-sync from the official FIFA feed every 5 minutes while this page is open.</span>
-  </div>
-  <div class="syncbar">
-    <button class="ghost" id="aibtn">✦ Run analyst engine</button>
-    <span id="aimsg">After every final whistle I research the match (scorers, cards, injuries, standout players, penalties) and re-make every open call with what I've learned. No number is fixed until kickoff.</span>
-  </div>
-  <div class="filters">
-    <select id="f-group"><option value="">All groups</option></select>
-    <select id="f-status">
-      <option value="">All matches</option>
-      <option value="window">Next 7 days — calls open</option>
-      <option value="upcoming">Upcoming</option>
-      <option value="played">Played</option>
-    </select>
-    <input type="text" id="f-search" placeholder="Search team…">
-  </div>
-  <div id="fixturelist"></div>
-</div>
-
-<div id="tab-groups" style="display:none">
-  <p class="sub" style="margin-bottom:16px">Tables update live from results you log. The amber <span class="pick">P1</span> stamps show where I predicted each team to finish before a ball was kicked. Top two advance; the 8 best third-placed teams also reach the Round of 32.</p>
-  <div class="groupgrid" id="groupgrid"></div>
-</div>
-
-<div id="tab-accuracy">
-  <div id="accbody"></div>
-</div>
-
-<footer>
-  <span>Sources: FIFA match schedule, final draw (5 Dec 2025) + March 2026 playoff results. Predictions locked 10 Jun 2026.</span>
-  <button class="ghost" id="resetbtn">Reset all logged data</button>
-</footer>
-</div>
-<script>
-/* ============ TEAMS ============ */
-const T = {
- MEX:{n:"Mexico",f:"🇲🇽"}, RSA:{n:"South Africa",f:"🇿🇦"}, KOR:{n:"South Korea",f:"🇰🇷"}, CZE:{n:"Czechia",f:"🇨🇿"},
- CAN:{n:"Canada",f:"🇨🇦"}, BIH:{n:"Bosnia-Herz.",f:"🇧🇦"}, QAT:{n:"Qatar",f:"🇶🇦"}, SUI:{n:"Switzerland",f:"🇨🇭"},
- BRA:{n:"Brazil",f:"🇧🇷"}, MAR:{n:"Morocco",f:"🇲🇦"}, HAI:{n:"Haiti",f:"🇭🇹"}, SCO:{n:"Scotland",f:"🏴󠁧󠁢󠁳󠁣󠁴󠁿"},
- USA:{n:"United States",f:"🇺🇸"}, PAR:{n:"Paraguay",f:"🇵🇾"}, AUS:{n:"Australia",f:"🇦🇺"}, TUR:{n:"Türkiye",f:"🇹🇷"},
- GER:{n:"Germany",f:"🇩🇪"}, CUW:{n:"Curaçao",f:"🇨🇼"}, CIV:{n:"Côte d'Ivoire",f:"🇨🇮"}, ECU:{n:"Ecuador",f:"🇪🇨"},
- NED:{n:"Netherlands",f:"🇳🇱"}, JPN:{n:"Japan",f:"🇯🇵"}, SWE:{n:"Sweden",f:"🇸🇪"}, TUN:{n:"Tunisia",f:"🇹🇳"},
- BEL:{n:"Belgium",f:"🇧🇪"}, EGY:{n:"Egypt",f:"🇪🇬"}, IRN:{n:"Iran",f:"🇮🇷"}, NZL:{n:"New Zealand",f:"🇳🇿"},
- ESP:{n:"Spain",f:"🇪🇸"}, CPV:{n:"Cabo Verde",f:"🇨🇻"}, KSA:{n:"Saudi Arabia",f:"🇸🇦"}, URU:{n:"Uruguay",f:"🇺🇾"},
- FRA:{n:"France",f:"🇫🇷"}, SEN:{n:"Senegal",f:"🇸🇳"}, IRQ:{n:"Iraq",f:"🇮🇶"}, NOR:{n:"Norway",f:"🇳🇴"},
- ARG:{n:"Argentina",f:"🇦🇷"}, ALG:{n:"Algeria",f:"🇩🇿"}, AUT:{n:"Austria",f:"🇦🇹"}, JOR:{n:"Jordan",f:"🇯🇴"},
- POR:{n:"Portugal",f:"🇵🇹"}, COD:{n:"DR Congo",f:"🇨🇩"}, UZB:{n:"Uzbekistan",f:"🇺🇿"}, COL:{n:"Colombia",f:"🇨🇴"},
- ENG:{n:"England",f:"🏴󠁧󠁢󠁥󠁮󠁧󠁿"}, CRO:{n:"Croatia",f:"🇭🇷"}, GHA:{n:"Ghana",f:"🇬🇭"}, PAN:{n:"Panama",f:"🇵🇦"}
-};
-const GROUPS = {
- A:["MEX","RSA","KOR","CZE"], B:["CAN","BIH","QAT","SUI"], C:["BRA","MAR","HAI","SCO"],
- D:["USA","PAR","AUS","TUR"], E:["GER","CUW","CIV","ECU"], F:["NED","JPN","SWE","TUN"],
- G:["BEL","EGY","IRN","NZL"], H:["ESP","CPV","KSA","URU"], I:["FRA","SEN","IRQ","NOR"],
- J:["ARG","ALG","AUT","JOR"], K:["POR","COD","UZB","COL"], L:["ENG","CRO","GHA","PAN"]
-};
-
-/* ============ FIXTURES + MY CALLS ============ */
-/* [id, date, group, home, away, venue, predHome, predAway, reasoning] */
-const M = [
-["m01","2026-06-11","A","MEX","RSA","Estadio Azteca, Mexico City",2,0,"Opening match, the Azteca, 2,200m altitude and a nation behind them — Mexico's wide play should overwhelm a Bafana side that creates little against organised blocks."],
-["m02","2026-06-11","A","KOR","CZE","Guadalajara",1,1,"Son's tempo against Czech physicality and set-piece threat. Two flawed pot-2/3 sides — a draw is the most honest call."],
-["m03","2026-06-12","B","CAN","BIH","Toronto",2,1,"Davies and David at home in Toronto against an ageing Bosnian spine. Bosnia score from a set piece, but Canada's transitions win it."],
-["m04","2026-06-12","D","USA","PAR","Los Angeles",2,1,"Host opener, Pulisic's tournament. Paraguay are well-drilled and physical but chronically short of goals — they nick one, no more."],
-["m05","2026-06-13","C","HAI","SCO","Boston",0,2,"Scotland's midfield (McTominay, Gilmour, McGinn) is their best in decades; debutants Haiti will compete physically but fade."],
-["m06","2026-06-13","D","AUS","TUR","Vancouver",1,2,"Güler and Yıldız give Türkiye creativity Australia simply can't match. Aussie grit keeps it close."],
-["m07","2026-06-13","C","BRA","MAR","New York / New Jersey",2,1,"The tie of matchday one. Ancelotti's Brazil vs the 2022 semifinalists — Morocco's structure is elite, but Brazil's front line wins individual duels."],
-["m08","2026-06-13","B","QAT","SUI","San Francisco Bay Area",0,2,"Switzerland never blow you away and never lose these. Qatar remain short of World Cup level."],
-["m09","2026-06-14","E","CIV","ECU","Philadelphia",1,1,"Athletic, well-coached, evenly matched. Ecuador's veteran back line vs Ivorian pace in transition — stalemate."],
-["m10","2026-06-14","E","GER","CUW","Houston",4,0,"Smallest nation ever at a World Cup against a wounded German ego. Nagelsmann's side make a statement early."],
-["m11","2026-06-14","F","NED","JPN","Dallas",2,1,"The heavyweight opener of Group F. Japan's press is real, but Oranje's individual quality — Gakpo, Simons, the Van Dijk-led line — edges a genuinely tight one."],
-["m12","2026-06-14","F","SWE","TUN","Monterrey",1,1,"Gyökeres and Isak against a deep Tunisian block. Sweden dominate territory, waste chances, and Tunisia pinch a draw."],
-["m13","2026-06-15","H","KSA","URU","Miami",0,2,"Bielsa's press against a Saudi midfield that wilts under pressure. Núñez and Valverde do the damage."],
-["m14","2026-06-15","H","ESP","CPV","Atlanta",4,0,"World No.1 against the debutants. The Yamal show, possibly done by halftime."],
-["m15","2026-06-15","G","IRN","NZL","Los Angeles",1,0,"Taremi's craft against New Zealand's honest organisation. One moment of quality decides it."],
-["m16","2026-06-15","G","BEL","EGY","Seattle",2,1,"Doku vs Salah is the headline. Belgium's depth, even post-golden-generation, outlasts an Egypt built entirely around one man."],
-["m17","2026-06-16","I","FRA","SEN","New York / New Jersey",2,1,"A proper rivalry of footballing cultures. Senegal can hurt anyone, but France's bench alone is stronger than most starting XIs."],
-["m18","2026-06-16","I","IRQ","NOR","Boston",0,3,"Haaland's first World Cup match. Iraq's deep block holds for an hour at best."],
-["m19","2026-06-16","J","ARG","ALG","Kansas City",2,0,"The champions begin Messi's farewell tournament. Algeria are organised but Argentina control these games in their sleep."],
-["m20","2026-06-16","J","AUT","JOR","San Francisco Bay Area",2,0,"Rangnick's pressing machine against a Jordan side that struggled in playoff-level games. Structure beats spirit."],
-["m21","2026-06-17","L","GHA","PAN","Toronto",1,1,"Kudus brilliance vs Panama's compact 4-4-2. Ghana's defensive lapses cost them a winner."],
-["m22","2026-06-17","L","ENG","CRO","Dallas",2,1,"Tuchel's first real test. Modrić's last dance is romantic, but Croatia's legs at the back can't live with Saka and Kane for 90 minutes."],
-["m23","2026-06-17","K","POR","COD","Houston",3,0,"Ronaldo's record sixth World Cup opens against a spirited DR Congo. Portugal's midfield (Vitinha, Bruno) is far too clean."],
-["m24","2026-06-17","K","UZB","COL","Mexico City",0,2,"Luis Díaz and James have too much savvy for World Cup debutants, even capable ones."],
-["m25","2026-06-18","A","CZE","RSA","Atlanta",2,1,"Czech set-piece weight against a lively but wasteful South Africa. The margins favour the Europeans."],
-["m26","2026-06-18","B","SUI","BIH","Los Angeles",2,0,"Swiss structure strangles Bosnia's slow build-up. Routine."],
-["m27","2026-06-18","B","CAN","QAT","Vancouver",3,0,"Vancouver party. Canada's press overwhelms Qatar inside half an hour."],
-["m28","2026-06-18","A","MEX","KOR","Guadalajara",2,1,"Guadalajara carries Mexico again. Korea dangerous on the counter through Son and Lee, but the hosts' wing play decides it."],
-["m29","2026-06-19","C","BRA","HAI","Philadelphia",4,0,"A mismatch. Brazil rotate and still cruise; Haiti chase shadows."],
-["m30","2026-06-19","C","SCO","MAR","Boston",1,2,"Hakimi and Diaz down the flanks against Scotland's back five — Morocco's width is exactly what Scotland struggle with."],
-["m31","2026-06-19","D","TUR","PAR","San Francisco Bay Area",1,1,"Türkiye dominate the ball, Paraguay dominate the box. The classic style stalemate."],
-["m32","2026-06-19","D","USA","AUS","Seattle",2,0,"Australia's directness plays into a US side that's athletic enough to match it and more skilled on the ball."],
-["m33","2026-06-20","E","GER","CIV","Toronto",2,1,"The trap game. Ivorian transitions will hurt Germany at least once, but Kimmich and Wirtz control the rest."],
-["m34","2026-06-20","E","ECU","CUW","Kansas City",2,0,"Caicedo bosses midfield. Ecuador efficient rather than spectacular — as always."],
-["m35","2026-06-20","F","NED","SWE","Houston",2,0,"Sweden's two-striker plan needs supply; the Dutch midfield cuts it off at source. Gakpo and Depay break the block."],
-["m36","2026-06-20","F","TUN","JPN","Monterrey",0,1,"Japan grind out the kind of disciplined 1-0 their tournament will depend on."],
-["m37","2026-06-21","H","URU","CPV","Miami",2,0,"Uruguay don't do mismatches glamorously — they do them efficiently."],
-["m38","2026-06-21","H","ESP","KSA","Atlanta",3,0,"Spain's possession machine rolls on. Saudi Arabia chase for 90 minutes."],
-["m39","2026-06-21","G","BEL","IRN","Los Angeles",2,0,"De Bruyne's last dance gathers pace. Iran sit deep; Belgium are patient."],
-["m40","2026-06-21","G","NZL","EGY","Vancouver",0,2,"Salah-led Egypt too sharp in the final third for an honest All Whites side."],
-["m41","2026-06-22","I","NOR","SEN","New York / New Jersey",1,1,"Haaland vs Koulibaly is a heavyweight duel. Both sides cancel out — second place may hinge on this point."],
-["m42","2026-06-22","I","FRA","IRQ","Philadelphia",3,0,"Routine for Les Bleus. Rotation, control, three goals."],
-["m43","2026-06-22","J","ARG","AUT","Dallas",2,1,"The real Group J test. Rangnick's press will bother Argentina for an hour — then Messi finds the pass that breaks it."],
-["m44","2026-06-22","J","JOR","ALG","San Francisco Bay Area",0,1,"A scrappy, tense affair. Algeria's extra tournament nous edges it."],
-["m45","2026-06-23","L","ENG","GHA","Boston",2,0,"Kane against a Ghana defence that concedes in clusters. England control without fireworks."],
-["m46","2026-06-23","L","PAN","CRO","Toronto",0,2,"Croatia's midfield class shows. Panama's organisation only delays it."],
-["m47","2026-06-23","K","POR","UZB","Houston",2,0,"Portugal professional. Uzbekistan's technical midfield gets moments, not goals."],
-["m48","2026-06-23","K","COL","COD","Guadalajara",2,1,"Colombia survive a Congolese scare — Wissa and Bakambu will test that high line."],
-["m49","2026-06-24","A","CZE","MEX","Mexico City",1,2,"Back at the Azteca, Mexico close out top spot. Czechia chase the draw and get caught pushing late."],
-["m50","2026-06-24","A","RSA","KOR","Monterrey",0,1,"Korea need it more, and Son's final World Cup push delivers a nervy winner."],
-["m51","2026-06-24","B","SUI","CAN","Vancouver",1,1,"The group decider with both likely already through — a professional, slightly bloodless draw."],
-["m52","2026-06-24","B","BIH","QAT","Seattle",1,1,"Two sides playing for pride and third-place mathematics cancel out."],
-["m53","2026-06-24","C","SCO","BRA","Miami",0,2,"Brazil seal top spot. Scotland keep it respectable and hope four points buys a third-place ticket."],
-["m54","2026-06-24","C","MAR","HAI","Atlanta",3,0,"Morocco need goal difference for seeding and get it. Ruthless."],
-["m55","2026-06-25","E","CUW","CIV","Philadelphia",0,2,"Côte d'Ivoire chase goal difference for the third-place race and Curaçao's fairy tale ends hard."],
-["m56","2026-06-25","E","ECU","GER","New York / New Jersey",1,1,"Both through, but first place matters. Ecuador's low block frustrates Germany — honours even."],
-["m57","2026-06-25","F","JPN","SWE","Dallas",2,1,"Japan finish the group strong; Sweden's tournament hangs on Gyökeres and he can't do it alone."],
-["m58","2026-06-25","F","TUN","NED","Kansas City",0,2,"Netherlands top Group F with a professional, unspectacular job. Exactly how Koeman likes it."],
-["m59","2026-06-25","D","TUR","USA","Los Angeles",1,2,"The group decider in LA. Türkiye's creators vs American athleticism and home noise — the hosts' depth in attack wins it late."],
-["m60","2026-06-25","D","PAR","AUS","San Francisco Bay Area",1,0,"Loser is likely out. Paraguay win it the Paraguayan way: one set piece, then ten men behind the ball."],
-["m61","2026-06-26","I","NOR","FRA","Boston",1,2,"Group I's heavyweight finale. Haaland scores — but France's depth tells over 90 minutes. Norway take third and sweat."],
-["m62","2026-06-26","I","SEN","IRQ","Toronto",2,0,"Senegal secure progression with the controlled win they've needed all group."],
-["m63","2026-06-26","G","EGY","IRN","Seattle",1,1,"Both fighting for second. A cagey draw that probably suits Egypt's goal difference more."],
-["m64","2026-06-26","G","NZL","BEL","Vancouver",0,3,"Belgium pad the goal difference and rest legs for the knockouts."],
-["m65","2026-06-26","H","CPV","KSA","Houston",1,1,"The pride match. Cabo Verde's spirit earns the point their tournament deserves."],
-["m66","2026-06-26","H","URU","ESP","Guadalajara",0,2,"Top-spot decider. Bielsa's press vs Spain's midfield — and nobody presses Spain's midfield successfully for 90 minutes."],
-["m67","2026-06-27","L","PAN","ENG","New York / New Jersey",0,3,"England top the group with ease and a clean bill of health — which is all Tuchel wants from this."],
-["m68","2026-06-27","L","CRO","GHA","Philadelphia",2,1,"Nervy. Ghana push, Croatia's experience holds. Modrić walks off to second place."],
-["m69","2026-06-27","J","ALG","AUT","Kansas City",1,1,"Both probably through; a tactical stalemate between two well-coached sides."],
-["m70","2026-06-27","J","JOR","ARG","Dallas",0,3,"Argentina rotate and still cruise. Top spot, minimum fuss, Messi managed carefully."],
-["m71","2026-06-27","K","COL","POR","Miami",1,1,"The top-spot decider, two sides with mutual respect and second-round maths in mind. A draw written in the stars."],
-["m72","2026-06-27","K","COD","UZB","Atlanta",1,1,"Both chasing third-place arithmetic, neither able to land the punch."]
-];
-
-/* ============ STATE / STORAGE ============ */
-const KEY = "wc2026-analyst";
-let S = { results:{}, notebook:"" };
-
-async function loadState(){
-  try{
-    const r = await window.storage.get(KEY);
-    if(r && r.value) S = JSON.parse(r.value);
-  }catch(e){ /* first run — key doesn't exist yet */ }
-  if(!S.results) S.results = {};
-  if(!S.calls) S.calls = {};        /* mid -> {h,a,reason,at}  — live revised calls */
-  if(!S.reported) S.reported = {};  /* mid -> true once AI match report stored */
-  if(typeof S.notebook !== "string") S.notebook = "";
-}
-let saveTimer=null;
-async function saveState(){
-  try{ await window.storage.set(KEY, JSON.stringify(S)); return true; }
-  catch(e){ console.error("storage error",e); return false; }
-}
-
-/* ============ AUTO SCORE SYNC (official FIFA feed) ============ */
-/* idCompetition=17, idSeason=285023, idStage=289273 (group stage). Map: my id -> FIFA IdMatch */
-const FIFA_IDS = {
- m01:"400021443", m02:"400021441", m03:"400021449", m04:"400021458",
- m05:"400021453", m06:"400021463", m07:"400021456", m08:"400021447",
- m09:"400021467", m10:"400021464", m11:"400021470", m12:"400021474",
- m13:"400021486", m14:"400021482", m15:"400021476", m16:"400021478",
- m17:"400021490", m18:"400021488", m19:"400021496", m20:"400021498",
- m21:"400021510", m22:"400021507", m23:"400021502", m24:"400021504",
- m25:"400021440", m26:"400021446", m27:"400021450", m28:"400021442",
- m29:"400021457", m30:"400021454", m31:"400021460", m32:"400021462",
- m33:"400021469", m34:"400021465", m35:"400021472", m36:"400021475",
- m37:"400021487", m38:"400021483", m39:"400021477", m40:"400021480",
- m41:"400021491", m42:"400021492", m43:"400021494", m44:"400021499",
- m45:"400021506", m46:"400021511", m47:"400021503", m48:"400021501",
- m49:"400021444", m50:"400021445", m51:"400021451", m52:"400021448",
- m53:"400021455", m54:"400021452", m55:"400021468", m56:"400021466",
- m57:"400021471", m58:"400021473", m59:"400021459", m60:"400021461",
- m61:"400021489", m62:"400021493", m63:"400021479", m64:"400021481",
- m65:"400021485", m66:"400021484", m67:"400021508", m68:"400021509",
- m69:"400021497", m70:"400021495", m71:"400021505", m72:"400021500"
-};
-const FIFA_URL = "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=285023&idStage=289273&language=en&count=100";
-const ID_TO_MID = Object.fromEntries(Object.entries(FIFA_IDS).map(([k,v])=>[v,k]));
-let liveScores = {}; // mid -> {h,a} for in-play matches (not persisted)
-
-async function syncScores(manual){
-  const bar = $("#syncmsg");
-  if(bar) bar.textContent = "Syncing with FIFA…";
-  try{
-    const resp = await fetch(FIFA_URL);
-    if(!resp.ok) throw new Error("HTTP "+resp.status);
-    const data = await resp.json();
-    const results = data.Results || [];
-    let finals = 0, live = 0;
-    liveScores = {};
-    for(const fm of results){
-      const mid = ID_TO_MID[String(fm.IdMatch)];
-      if(!mid) continue;
-      const hs = fm.Home && fm.Home.Score, as = fm.Away && fm.Away.Score;
-      if(hs==null || as==null) continue;
-      if(fm.MatchStatus === 0){            // full-time, official
-        const prev = S.results[mid] || {};
-        if(prev.h !== hs || prev.a !== as){
-          S.results[mid] = {...prev, h:hs, a:as, auto:true};
-          finals++;
-        }
-      } else if(fm.MatchStatus === 3){     // in play
-        liveScores[mid] = {h:hs, a:as};
-        live++;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WC2026 — The Analyst's Slate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --night: #0b1322; /* stadium night */
+        --panel: #111d31; /* card slate */
+        --panel-2: #16243c; /* raised slate */
+        --line: #22324e; /* hairline */
+        --chalk: #e9eef7; /* primary text */
+        --muted: #8da0bf; /* secondary text */
+        --amber: #f5b83d; /* scoreboard amber — predictions */
+        --hit: #41c98a; /* exact / correct */
+        --part: #5b8def; /* right outcome, wrong score */
+        --miss: #e0564f; /* wrong call */
+        --display: "Oswald", "Arial Narrow", sans-serif;
+        --body: "Inter", system-ui, -apple-system, sans-serif;
       }
-    }
-    if(finals) await saveState();
-    S.lastSync = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-    if(bar) bar.innerHTML = `Last synced <b>${S.lastSync}</b>`
-      + (finals?` · <span style="color:var(--hit)">${finals} final${finals>1?"s":""} updated</span>`:" · no new finals")
-      + (live?` · <span style="color:var(--amber)">${live} live</span>`:"");
-    renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-    if(finals) runEngine();   /* new full-time results → write reports + revise open calls */
-  }catch(e){
-    console.warn("sync failed", e);
-    if(bar) bar.innerHTML = `<span style="color:var(--miss)">Auto-sync unavailable here</span> — if you're viewing this inside a sandboxed preview, download the file and open it in your browser; the feed needs an open connection. Manual entry always works.`;
-  }
-}
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--night);
+        background-image:
+          radial-gradient(
+            1200px 500px at 50% -200px,
+            rgba(245, 184, 61, 0.07),
+            transparent 60%
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.012) 0 80px,
+            transparent 80px 160px
+          );
+        color: var(--chalk);
+        font-family: var(--body);
+        font-size: 14px;
+        line-height: 1.5;
+        min-height: 100vh;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 20px 80px;
+      }
 
-/* ============ ANALYST ENGINE (Claude + web search) ============ */
-/* Two jobs, run from inside the page:
+      /* ---------- header ---------- */
+      header {
+        padding: 34px 0 18px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 18px;
+      }
+      .eyebrow {
+        font-family: var(--display);
+        font-size: 12px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--amber);
+        font-weight: 500;
+      }
+      h1 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(30px, 5vw, 46px);
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        line-height: 1.05;
+        margin-top: 6px;
+      }
+      h1 .thin {
+        font-weight: 400;
+        color: var(--muted);
+      }
+      .sub {
+        color: var(--muted);
+        margin-top: 8px;
+        max-width: 640px;
+      }
+      .formline {
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+      .stat {
+        min-width: 96px;
+      }
+      .stat .num {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 30px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .lbl {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .stat.hit .num {
+        color: var(--hit);
+      }
+      .stat.part .num {
+        color: var(--part);
+      }
+      .stat.miss .num {
+        color: var(--miss);
+      }
+      .stat.amber .num {
+        color: var(--amber);
+      }
+
+      /* ---------- tabs ---------- */
+      nav {
+        display: flex;
+        gap: 4px;
+        margin: 14px 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      nav button {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 12px 16px;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s;
+      }
+      nav button:hover {
+        color: var(--chalk);
+      }
+      nav button.active {
+        color: var(--amber);
+        border-bottom-color: var(--amber);
+      }
+      nav button:focus-visible {
+        outline: 2px solid var(--amber);
+        outline-offset: -2px;
+      }
+
+      /* ---------- filters ---------- */
+      .filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        align-items: center;
+      }
+      .filters select,
+      .filters input {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        color: var(--chalk);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: var(--body);
+        font-size: 13px;
+      }
+      .filters input {
+        flex: 1;
+        min-width: 160px;
+      }
+      .filters select:focus,
+      .filters input:focus {
+        outline: 1px solid var(--amber);
+        border-color: var(--amber);
+      }
+
+      /* ---------- fixtures ---------- */
+      .dayhdr {
+        font-family: var(--display);
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 26px 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .dayhdr::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+      .match {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .match.played {
+        border-left: 3px solid var(--line);
+      }
+      .match.v-exact {
+        border-left: 3px solid var(--hit);
+      }
+      .match.v-outcome {
+        border-left: 3px solid var(--part);
+      }
+      .match.v-wrong {
+        border-left: 3px solid var(--miss);
+      }
+      .mrow {
+        display: grid;
+        grid-template-columns: 52px 1fr auto 1fr 150px;
+        gap: 10px;
+        align-items: center;
+        padding: 14px 16px;
+        cursor: pointer;
+      }
+      .mrow:hover {
+        background: var(--panel-2);
+      }
+      .gbadge {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 3px 0;
+        text-align: center;
+      }
+      .team {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+      }
+      .team.right {
+        justify-content: flex-end;
+        text-align: right;
+      }
+      .team .flag {
+        font-size: 20px;
+        line-height: 1;
+      }
+      .scorebox {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 86px;
+      }
+      .score {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 23px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.06em;
+      }
+      .score.pending {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .stamp {
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        color: var(--amber);
+        border: 1px dashed rgba(245, 184, 61, 0.55);
+        border-radius: 4px;
+        padding: 1px 8px;
+        margin-top: 4px;
+        transform: rotate(-2deg);
+        white-space: nowrap;
+      }
+      .stamp.locked {
+        color: var(--muted);
+        border-color: rgba(141, 160, 191, 0.4);
+        transform: rotate(0);
+      }
+      .syncbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .syncbar b {
+        color: var(--chalk);
+      }
+      .live-pill {
+        font-family: var(--display);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        color: #0b1322;
+        background: var(--amber);
+        border-radius: 3px;
+        padding: 1px 6px;
+        animation: pulse 1.6s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .live-pill {
+          animation: none;
+        }
+      }
+      .autotag {
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .statstrip {
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+      }
+      .statline {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-family: var(--display);
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        margin: 2px 0;
+      }
+      .statlbl {
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        align-self: center;
+      }
+      .possbar {
+        height: 7px;
+        border-radius: 4px;
+        background: var(--line);
+        overflow: hidden;
+        margin: 8px 0 4px;
+      }
+      .possbar div {
+        height: 100%;
+        background: var(--amber);
+      }
+      .possnum {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .dossier {
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 4px;
+      }
+      .drow {
+        display: grid;
+        grid-template-columns: 108px 1fr;
+        gap: 10px;
+        padding: 4px 0;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(34, 50, 78, 0.45);
+      }
+      .drow:last-child {
+        border-bottom: none;
+      }
+      .dlbl {
+        font-family: var(--display);
+        font-size: 10.5px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding-top: 2px;
+      }
+      .dempty {
+        color: var(--muted);
+      }
+      .dpending {
+        font-size: 12px;
+        color: var(--amber);
+        margin-bottom: 8px;
+      }
+      .anablock {
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+      }
+      .anahdr {
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 7px;
+      }
+      .mknote {
+        font-family: var(--body);
+        font-size: 10.5px;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .probbar {
+        display: flex;
+        height: 9px;
+        border-radius: 5px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .probbar .ph {
+        background: var(--hit);
+      }
+      .probbar .pd {
+        background: var(--muted);
+      }
+      .probbar .pa {
+        background: var(--part);
+      }
+      .probnum {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-family: var(--display);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 3px 9px;
+        background: var(--panel);
+      }
+      .mktable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      .mktable td {
+        padding: 5px 4px;
+        text-align: left;
+        border-bottom: 1px solid rgba(34, 50, 78, 0.45);
+      }
+      .mktable tr:last-child td {
+        border-bottom: none;
+      }
+      .mktable td:nth-child(2) {
+        font-family: var(--display);
+        letter-spacing: 0.03em;
+      }
+      .mktable td.conf {
+        text-align: right;
+        white-space: nowrap;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .confbar {
+        display: inline-block;
+        width: 64px;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--line);
+        margin-right: 7px;
+        vertical-align: 1px;
+        overflow: hidden;
+      }
+      .confbar span {
+        display: block;
+        height: 100%;
+        background: var(--amber);
+      }
+      .reason.locked {
+        border-left-color: var(--line);
+        color: var(--muted);
+      }
+      .reason.locked b {
+        color: var(--muted);
+      }
+      .meta {
+        text-align: right;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .verdict {
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .verdict.exact {
+        color: var(--hit);
+      }
+      .verdict.outcome {
+        color: var(--part);
+      }
+      .verdict.wrong {
+        color: var(--miss);
+      }
+
+      /* ---------- expand panel ---------- */
+      .panel {
+        display: none;
+        border-top: 1px solid var(--line);
+        padding: 16px 18px 20px;
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .match.open .panel {
+        display: block;
+      }
+      .reason {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 14px;
+        padding-left: 12px;
+        border-left: 2px solid var(--amber);
+      }
+      .reason b {
+        color: var(--amber);
+        font-weight: 600;
+      }
+      .formgrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .field label {
+        display: block;
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        background: var(--night);
+        border: 1px solid var(--line);
+        color: var(--chalk);
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-family: var(--body);
+        font-size: 13px;
+      }
+      .field textarea {
+        min-height: 54px;
+        resize: vertical;
+      }
+      .field input:focus,
+      .field textarea:focus {
+        outline: 1px solid var(--amber);
+        border-color: var(--amber);
+      }
+      .scoreinputs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .scoreinputs input {
+        width: 58px;
+        text-align: center;
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .panel .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button.primary {
+        background: var(--amber);
+        color: #231a05;
+        border: none;
+        border-radius: 6px;
+        padding: 9px 20px;
+        cursor: pointer;
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      button.primary:hover {
+        filter: brightness(1.08);
+      }
+      button.ghost {
+        background: none;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-family: var(--display);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      button.ghost:hover {
+        color: var(--chalk);
+        border-color: var(--muted);
+      }
+      .savedmsg {
+        color: var(--hit);
+        font-size: 12px;
+      }
+
+      /* ---------- groups ---------- */
+      .groupgrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 14px;
+      }
+      .gcard {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px 18px;
+      }
+      .gcard h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 16px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .gcard h3 span {
+        color: var(--amber);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        font-family: var(--display);
+        font-weight: 500;
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: right;
+        padding: 4px 5px;
+        border-bottom: 1px solid var(--line);
+      }
+      th:first-child {
+        text-align: left;
+      }
+      td {
+        padding: 6px 5px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        border-bottom: 1px solid rgba(34, 50, 78, 0.5);
+      }
+      td.t {
+        text-align: left;
+        font-family: var(--display);
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td .flag {
+        margin-right: 7px;
+      }
+      .pick {
+        display: inline-block;
+        font-family: var(--display);
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--amber);
+        border: 1px dashed rgba(245, 184, 61, 0.5);
+        border-radius: 3px;
+        padding: 0 4px;
+        margin-left: 6px;
+        vertical-align: 1px;
+      }
+      .qline {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+
+      /* ---------- accuracy ---------- */
+      .acc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .acc-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 18px;
+      }
+      .acc-card .num {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 34px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .acc-card .lbl {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      .section-h {
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin: 28px 0 12px;
+      }
+      .lesson {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--amber);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--chalk);
+      }
+      .lesson .tag {
+        font-family: var(--display);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--amber);
+        display: block;
+        margin-bottom: 2px;
+      }
+      .miss-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 7px;
+        font-size: 13px;
+        align-items: center;
+      }
+      .miss-row .delta {
+        font-family: var(--display);
+        font-weight: 600;
+        color: var(--miss);
+        white-space: nowrap;
+      }
+      .notebook {
+        width: 100%;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--chalk);
+        padding: 14px;
+        font-family: var(--body);
+        font-size: 13px;
+        min-height: 120px;
+        resize: vertical;
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 13px;
+        padding: 24px;
+        text-align: center;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+      }
+      footer {
+        margin-top: 48px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11.5px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .loading {
+        position: fixed;
+        inset: 0;
+        background: var(--night);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        font-family: var(--display);
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--amber);
+        font-size: 13px;
+      }
+      @media (max-width: 680px) {
+        .mrow {
+          grid-template-columns: 40px 1fr auto 1fr;
+          gap: 7px;
+        }
+        .meta {
+          display: none;
+        }
+        .team {
+          font-size: 13.5px;
+        }
+        .team .flag {
+          font-size: 16px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading" id="loading">Loading the slate…</div>
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">
+          FIFA World Cup 26 · USA · Canada · Mexico · 11 Jun – 19 Jul
+        </div>
+        <h1>The Analyst's Slate <span class="thin">/ Group Stage</span></h1>
+        <p class="sub">
+          48 teams, 12 groups, 72 group matches. I publish each call on a
+          rolling 7-day window — only matches kicking off within the next seven
+          days carry a stamped prediction, so every call reflects the latest
+          form, fitness and group maths. Scores, match dossiers and revised
+          calls all fill in by themselves — your only job is reading, and the
+          occasional note.
+        </p>
+        <div class="formline" id="headstats"></div>
+      </header>
+
+      <nav>
+        <button class="active" data-tab="fixtures">Fixtures &amp; Calls</button>
+        <button data-tab="groups">Groups &amp; Tables</button>
+        <button data-tab="accuracy">Accuracy &amp; Lessons</button>
+      </nav>
+
+      <div id="tab-fixtures">
+        <div class="syncbar">
+          <button class="ghost" id="syncbtn">⟳ Sync scores now</button>
+          <span id="syncmsg"
+            >Scores auto-sync from the official FIFA feed every 5 minutes while
+            this page is open.</span
+          >
+        </div>
+        <div class="syncbar">
+          <button class="ghost" id="aibtn">✦ Run analyst engine</button>
+          <span id="aimsg"
+            >After every final whistle I research the match (formations,
+            possession, shots, scorers, cards, injuries, standout players) and
+            re-make every open call with the full analyst template: squad &amp;
+            availability check, form curves, tactical matchup, win/draw/win
+            probabilities, most likely scorelines and market calls with
+            confidence. No number is fixed until kickoff.</span
+          >
+        </div>
+        <div class="filters">
+          <select id="f-group">
+            <option value="">All groups</option>
+          </select>
+          <select id="f-status">
+            <option value="">All matches</option>
+            <option value="window">Next 7 days — calls open</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="played">Played</option>
+          </select>
+          <input type="text" id="f-search" placeholder="Search team…" />
+        </div>
+        <div id="fixturelist"></div>
+      </div>
+
+      <div id="tab-groups" style="display: none">
+        <p class="sub" style="margin-bottom: 16px">
+          Tables update live from results you log. The amber
+          <span class="pick">P1</span> stamps show where I predicted each team
+          to finish before a ball was kicked. Top two advance; the 8 best
+          third-placed teams also reach the Round of 32.
+        </p>
+        <div class="groupgrid" id="groupgrid"></div>
+      </div>
+
+      <div id="tab-accuracy">
+        <div id="accbody"></div>
+      </div>
+
+      <footer>
+        <span
+          >Sources: FIFA match schedule, final draw (5 Dec 2025) + March 2026
+          playoff results. Predictions locked 10 Jun 2026.</span
+        >
+        <span style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button class="ghost" id="exportbtn">⇩ Export data</button>
+          <button class="ghost" id="importbtn">⇧ Import data</button>
+          <input
+            type="file"
+            id="importfile"
+            accept=".json,application/json"
+            style="display: none"
+          />
+          <button class="ghost" id="resetbtn">Reset all logged data</button>
+        </span>
+      </footer>
+    </div>
+    <script>
+      /* ============ TEAMS ============ */
+      const T = {
+        MEX: { n: "Mexico", f: "🇲🇽" },
+        RSA: { n: "South Africa", f: "🇿🇦" },
+        KOR: { n: "South Korea", f: "🇰🇷" },
+        CZE: { n: "Czechia", f: "🇨🇿" },
+        CAN: { n: "Canada", f: "🇨🇦" },
+        BIH: { n: "Bosnia-Herz.", f: "🇧🇦" },
+        QAT: { n: "Qatar", f: "🇶🇦" },
+        SUI: { n: "Switzerland", f: "🇨🇭" },
+        BRA: { n: "Brazil", f: "🇧🇷" },
+        MAR: { n: "Morocco", f: "🇲🇦" },
+        HAI: { n: "Haiti", f: "🇭🇹" },
+        SCO: { n: "Scotland", f: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+        USA: { n: "United States", f: "🇺🇸" },
+        PAR: { n: "Paraguay", f: "🇵🇾" },
+        AUS: { n: "Australia", f: "🇦🇺" },
+        TUR: { n: "Türkiye", f: "🇹🇷" },
+        GER: { n: "Germany", f: "🇩🇪" },
+        CUW: { n: "Curaçao", f: "🇨🇼" },
+        CIV: { n: "Côte d'Ivoire", f: "🇨🇮" },
+        ECU: { n: "Ecuador", f: "🇪🇨" },
+        NED: { n: "Netherlands", f: "🇳🇱" },
+        JPN: { n: "Japan", f: "🇯🇵" },
+        SWE: { n: "Sweden", f: "🇸🇪" },
+        TUN: { n: "Tunisia", f: "🇹🇳" },
+        BEL: { n: "Belgium", f: "🇧🇪" },
+        EGY: { n: "Egypt", f: "🇪🇬" },
+        IRN: { n: "Iran", f: "🇮🇷" },
+        NZL: { n: "New Zealand", f: "🇳🇿" },
+        ESP: { n: "Spain", f: "🇪🇸" },
+        CPV: { n: "Cabo Verde", f: "🇨🇻" },
+        KSA: { n: "Saudi Arabia", f: "🇸🇦" },
+        URU: { n: "Uruguay", f: "🇺🇾" },
+        FRA: { n: "France", f: "🇫🇷" },
+        SEN: { n: "Senegal", f: "🇸🇳" },
+        IRQ: { n: "Iraq", f: "🇮🇶" },
+        NOR: { n: "Norway", f: "🇳🇴" },
+        ARG: { n: "Argentina", f: "🇦🇷" },
+        ALG: { n: "Algeria", f: "🇩🇿" },
+        AUT: { n: "Austria", f: "🇦🇹" },
+        JOR: { n: "Jordan", f: "🇯🇴" },
+        POR: { n: "Portugal", f: "🇵🇹" },
+        COD: { n: "DR Congo", f: "🇨🇩" },
+        UZB: { n: "Uzbekistan", f: "🇺🇿" },
+        COL: { n: "Colombia", f: "🇨🇴" },
+        ENG: { n: "England", f: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+        CRO: { n: "Croatia", f: "🇭🇷" },
+        GHA: { n: "Ghana", f: "🇬🇭" },
+        PAN: { n: "Panama", f: "🇵🇦" },
+      };
+      const GROUPS = {
+        A: ["MEX", "RSA", "KOR", "CZE"],
+        B: ["CAN", "BIH", "QAT", "SUI"],
+        C: ["BRA", "MAR", "HAI", "SCO"],
+        D: ["USA", "PAR", "AUS", "TUR"],
+        E: ["GER", "CUW", "CIV", "ECU"],
+        F: ["NED", "JPN", "SWE", "TUN"],
+        G: ["BEL", "EGY", "IRN", "NZL"],
+        H: ["ESP", "CPV", "KSA", "URU"],
+        I: ["FRA", "SEN", "IRQ", "NOR"],
+        J: ["ARG", "ALG", "AUT", "JOR"],
+        K: ["POR", "COD", "UZB", "COL"],
+        L: ["ENG", "CRO", "GHA", "PAN"],
+      };
+
+      /* ============ FIXTURES + MY CALLS ============ */
+      /* [id, date, group, home, away, venue, predHome, predAway, reasoning] */
+      const M = [
+        [
+          "m01",
+          "2026-06-11",
+          "A",
+          "MEX",
+          "RSA",
+          "Estadio Azteca, Mexico City",
+          2,
+          0,
+          "Opening match, the Azteca, 2,200m altitude and a nation behind them — Mexico's wide play should overwhelm a Bafana side that creates little against organised blocks.",
+        ],
+        [
+          "m02",
+          "2026-06-11",
+          "A",
+          "KOR",
+          "CZE",
+          "Guadalajara",
+          1,
+          1,
+          "Son's tempo against Czech physicality and set-piece threat. Two flawed pot-2/3 sides — a draw is the most honest call.",
+        ],
+        [
+          "m03",
+          "2026-06-12",
+          "B",
+          "CAN",
+          "BIH",
+          "Toronto",
+          2,
+          1,
+          "Davies and David at home in Toronto against an ageing Bosnian spine. Bosnia score from a set piece, but Canada's transitions win it.",
+        ],
+        [
+          "m04",
+          "2026-06-12",
+          "D",
+          "USA",
+          "PAR",
+          "Los Angeles",
+          2,
+          1,
+          "Host opener, Pulisic's tournament. Paraguay are well-drilled and physical but chronically short of goals — they nick one, no more.",
+        ],
+        [
+          "m05",
+          "2026-06-13",
+          "C",
+          "HAI",
+          "SCO",
+          "Boston",
+          0,
+          2,
+          "Scotland's midfield (McTominay, Gilmour, McGinn) is their best in decades; debutants Haiti will compete physically but fade.",
+        ],
+        [
+          "m06",
+          "2026-06-13",
+          "D",
+          "AUS",
+          "TUR",
+          "Vancouver",
+          1,
+          2,
+          "Güler and Yıldız give Türkiye creativity Australia simply can't match. Aussie grit keeps it close.",
+        ],
+        [
+          "m07",
+          "2026-06-13",
+          "C",
+          "BRA",
+          "MAR",
+          "New York / New Jersey",
+          2,
+          1,
+          "The tie of matchday one. Ancelotti's Brazil vs the 2022 semifinalists — Morocco's structure is elite, but Brazil's front line wins individual duels.",
+        ],
+        [
+          "m08",
+          "2026-06-13",
+          "B",
+          "QAT",
+          "SUI",
+          "San Francisco Bay Area",
+          0,
+          2,
+          "Switzerland never blow you away and never lose these. Qatar remain short of World Cup level.",
+        ],
+        [
+          "m09",
+          "2026-06-14",
+          "E",
+          "CIV",
+          "ECU",
+          "Philadelphia",
+          1,
+          1,
+          "Athletic, well-coached, evenly matched. Ecuador's veteran back line vs Ivorian pace in transition — stalemate.",
+        ],
+        [
+          "m10",
+          "2026-06-14",
+          "E",
+          "GER",
+          "CUW",
+          "Houston",
+          4,
+          0,
+          "Smallest nation ever at a World Cup against a wounded German ego. Nagelsmann's side make a statement early.",
+        ],
+        [
+          "m11",
+          "2026-06-14",
+          "F",
+          "NED",
+          "JPN",
+          "Dallas",
+          2,
+          1,
+          "The heavyweight opener of Group F. Japan's press is real, but Oranje's individual quality — Gakpo, Simons, the Van Dijk-led line — edges a genuinely tight one.",
+        ],
+        [
+          "m12",
+          "2026-06-14",
+          "F",
+          "SWE",
+          "TUN",
+          "Monterrey",
+          1,
+          1,
+          "Gyökeres and Isak against a deep Tunisian block. Sweden dominate territory, waste chances, and Tunisia pinch a draw.",
+        ],
+        [
+          "m13",
+          "2026-06-15",
+          "H",
+          "KSA",
+          "URU",
+          "Miami",
+          0,
+          2,
+          "Bielsa's press against a Saudi midfield that wilts under pressure. Núñez and Valverde do the damage.",
+        ],
+        [
+          "m14",
+          "2026-06-15",
+          "H",
+          "ESP",
+          "CPV",
+          "Atlanta",
+          4,
+          0,
+          "World No.1 against the debutants. The Yamal show, possibly done by halftime.",
+        ],
+        [
+          "m15",
+          "2026-06-15",
+          "G",
+          "IRN",
+          "NZL",
+          "Los Angeles",
+          1,
+          0,
+          "Taremi's craft against New Zealand's honest organisation. One moment of quality decides it.",
+        ],
+        [
+          "m16",
+          "2026-06-15",
+          "G",
+          "BEL",
+          "EGY",
+          "Seattle",
+          2,
+          1,
+          "Doku vs Salah is the headline. Belgium's depth, even post-golden-generation, outlasts an Egypt built entirely around one man.",
+        ],
+        [
+          "m17",
+          "2026-06-16",
+          "I",
+          "FRA",
+          "SEN",
+          "New York / New Jersey",
+          2,
+          1,
+          "A proper rivalry of footballing cultures. Senegal can hurt anyone, but France's bench alone is stronger than most starting XIs.",
+        ],
+        [
+          "m18",
+          "2026-06-16",
+          "I",
+          "IRQ",
+          "NOR",
+          "Boston",
+          0,
+          3,
+          "Haaland's first World Cup match. Iraq's deep block holds for an hour at best.",
+        ],
+        [
+          "m19",
+          "2026-06-16",
+          "J",
+          "ARG",
+          "ALG",
+          "Kansas City",
+          2,
+          0,
+          "The champions begin Messi's farewell tournament. Algeria are organised but Argentina control these games in their sleep.",
+        ],
+        [
+          "m20",
+          "2026-06-16",
+          "J",
+          "AUT",
+          "JOR",
+          "San Francisco Bay Area",
+          2,
+          0,
+          "Rangnick's pressing machine against a Jordan side that struggled in playoff-level games. Structure beats spirit.",
+        ],
+        [
+          "m21",
+          "2026-06-17",
+          "L",
+          "GHA",
+          "PAN",
+          "Toronto",
+          1,
+          1,
+          "Kudus brilliance vs Panama's compact 4-4-2. Ghana's defensive lapses cost them a winner.",
+        ],
+        [
+          "m22",
+          "2026-06-17",
+          "L",
+          "ENG",
+          "CRO",
+          "Dallas",
+          2,
+          1,
+          "Tuchel's first real test. Modrić's last dance is romantic, but Croatia's legs at the back can't live with Saka and Kane for 90 minutes.",
+        ],
+        [
+          "m23",
+          "2026-06-17",
+          "K",
+          "POR",
+          "COD",
+          "Houston",
+          3,
+          0,
+          "Ronaldo's record sixth World Cup opens against a spirited DR Congo. Portugal's midfield (Vitinha, Bruno) is far too clean.",
+        ],
+        [
+          "m24",
+          "2026-06-17",
+          "K",
+          "UZB",
+          "COL",
+          "Mexico City",
+          0,
+          2,
+          "Luis Díaz and James have too much savvy for World Cup debutants, even capable ones.",
+        ],
+        [
+          "m25",
+          "2026-06-18",
+          "A",
+          "CZE",
+          "RSA",
+          "Atlanta",
+          2,
+          1,
+          "Czech set-piece weight against a lively but wasteful South Africa. The margins favour the Europeans.",
+        ],
+        [
+          "m26",
+          "2026-06-18",
+          "B",
+          "SUI",
+          "BIH",
+          "Los Angeles",
+          2,
+          0,
+          "Swiss structure strangles Bosnia's slow build-up. Routine.",
+        ],
+        [
+          "m27",
+          "2026-06-18",
+          "B",
+          "CAN",
+          "QAT",
+          "Vancouver",
+          3,
+          0,
+          "Vancouver party. Canada's press overwhelms Qatar inside half an hour.",
+        ],
+        [
+          "m28",
+          "2026-06-18",
+          "A",
+          "MEX",
+          "KOR",
+          "Guadalajara",
+          2,
+          1,
+          "Guadalajara carries Mexico again. Korea dangerous on the counter through Son and Lee, but the hosts' wing play decides it.",
+        ],
+        [
+          "m29",
+          "2026-06-19",
+          "C",
+          "BRA",
+          "HAI",
+          "Philadelphia",
+          4,
+          0,
+          "A mismatch. Brazil rotate and still cruise; Haiti chase shadows.",
+        ],
+        [
+          "m30",
+          "2026-06-19",
+          "C",
+          "SCO",
+          "MAR",
+          "Boston",
+          1,
+          2,
+          "Hakimi and Diaz down the flanks against Scotland's back five — Morocco's width is exactly what Scotland struggle with.",
+        ],
+        [
+          "m31",
+          "2026-06-19",
+          "D",
+          "TUR",
+          "PAR",
+          "San Francisco Bay Area",
+          1,
+          1,
+          "Türkiye dominate the ball, Paraguay dominate the box. The classic style stalemate.",
+        ],
+        [
+          "m32",
+          "2026-06-19",
+          "D",
+          "USA",
+          "AUS",
+          "Seattle",
+          2,
+          0,
+          "Australia's directness plays into a US side that's athletic enough to match it and more skilled on the ball.",
+        ],
+        [
+          "m33",
+          "2026-06-20",
+          "E",
+          "GER",
+          "CIV",
+          "Toronto",
+          2,
+          1,
+          "The trap game. Ivorian transitions will hurt Germany at least once, but Kimmich and Wirtz control the rest.",
+        ],
+        [
+          "m34",
+          "2026-06-20",
+          "E",
+          "ECU",
+          "CUW",
+          "Kansas City",
+          2,
+          0,
+          "Caicedo bosses midfield. Ecuador efficient rather than spectacular — as always.",
+        ],
+        [
+          "m35",
+          "2026-06-20",
+          "F",
+          "NED",
+          "SWE",
+          "Houston",
+          2,
+          0,
+          "Sweden's two-striker plan needs supply; the Dutch midfield cuts it off at source. Gakpo and Depay break the block.",
+        ],
+        [
+          "m36",
+          "2026-06-20",
+          "F",
+          "TUN",
+          "JPN",
+          "Monterrey",
+          0,
+          1,
+          "Japan grind out the kind of disciplined 1-0 their tournament will depend on.",
+        ],
+        [
+          "m37",
+          "2026-06-21",
+          "H",
+          "URU",
+          "CPV",
+          "Miami",
+          2,
+          0,
+          "Uruguay don't do mismatches glamorously — they do them efficiently.",
+        ],
+        [
+          "m38",
+          "2026-06-21",
+          "H",
+          "ESP",
+          "KSA",
+          "Atlanta",
+          3,
+          0,
+          "Spain's possession machine rolls on. Saudi Arabia chase for 90 minutes.",
+        ],
+        [
+          "m39",
+          "2026-06-21",
+          "G",
+          "BEL",
+          "IRN",
+          "Los Angeles",
+          2,
+          0,
+          "De Bruyne's last dance gathers pace. Iran sit deep; Belgium are patient.",
+        ],
+        [
+          "m40",
+          "2026-06-21",
+          "G",
+          "NZL",
+          "EGY",
+          "Vancouver",
+          0,
+          2,
+          "Salah-led Egypt too sharp in the final third for an honest All Whites side.",
+        ],
+        [
+          "m41",
+          "2026-06-22",
+          "I",
+          "NOR",
+          "SEN",
+          "New York / New Jersey",
+          1,
+          1,
+          "Haaland vs Koulibaly is a heavyweight duel. Both sides cancel out — second place may hinge on this point.",
+        ],
+        [
+          "m42",
+          "2026-06-22",
+          "I",
+          "FRA",
+          "IRQ",
+          "Philadelphia",
+          3,
+          0,
+          "Routine for Les Bleus. Rotation, control, three goals.",
+        ],
+        [
+          "m43",
+          "2026-06-22",
+          "J",
+          "ARG",
+          "AUT",
+          "Dallas",
+          2,
+          1,
+          "The real Group J test. Rangnick's press will bother Argentina for an hour — then Messi finds the pass that breaks it.",
+        ],
+        [
+          "m44",
+          "2026-06-22",
+          "J",
+          "JOR",
+          "ALG",
+          "San Francisco Bay Area",
+          0,
+          1,
+          "A scrappy, tense affair. Algeria's extra tournament nous edges it.",
+        ],
+        [
+          "m45",
+          "2026-06-23",
+          "L",
+          "ENG",
+          "GHA",
+          "Boston",
+          2,
+          0,
+          "Kane against a Ghana defence that concedes in clusters. England control without fireworks.",
+        ],
+        [
+          "m46",
+          "2026-06-23",
+          "L",
+          "PAN",
+          "CRO",
+          "Toronto",
+          0,
+          2,
+          "Croatia's midfield class shows. Panama's organisation only delays it.",
+        ],
+        [
+          "m47",
+          "2026-06-23",
+          "K",
+          "POR",
+          "UZB",
+          "Houston",
+          2,
+          0,
+          "Portugal professional. Uzbekistan's technical midfield gets moments, not goals.",
+        ],
+        [
+          "m48",
+          "2026-06-23",
+          "K",
+          "COL",
+          "COD",
+          "Guadalajara",
+          2,
+          1,
+          "Colombia survive a Congolese scare — Wissa and Bakambu will test that high line.",
+        ],
+        [
+          "m49",
+          "2026-06-24",
+          "A",
+          "CZE",
+          "MEX",
+          "Mexico City",
+          1,
+          2,
+          "Back at the Azteca, Mexico close out top spot. Czechia chase the draw and get caught pushing late.",
+        ],
+        [
+          "m50",
+          "2026-06-24",
+          "A",
+          "RSA",
+          "KOR",
+          "Monterrey",
+          0,
+          1,
+          "Korea need it more, and Son's final World Cup push delivers a nervy winner.",
+        ],
+        [
+          "m51",
+          "2026-06-24",
+          "B",
+          "SUI",
+          "CAN",
+          "Vancouver",
+          1,
+          1,
+          "The group decider with both likely already through — a professional, slightly bloodless draw.",
+        ],
+        [
+          "m52",
+          "2026-06-24",
+          "B",
+          "BIH",
+          "QAT",
+          "Seattle",
+          1,
+          1,
+          "Two sides playing for pride and third-place mathematics cancel out.",
+        ],
+        [
+          "m53",
+          "2026-06-24",
+          "C",
+          "SCO",
+          "BRA",
+          "Miami",
+          0,
+          2,
+          "Brazil seal top spot. Scotland keep it respectable and hope four points buys a third-place ticket.",
+        ],
+        [
+          "m54",
+          "2026-06-24",
+          "C",
+          "MAR",
+          "HAI",
+          "Atlanta",
+          3,
+          0,
+          "Morocco need goal difference for seeding and get it. Ruthless.",
+        ],
+        [
+          "m55",
+          "2026-06-25",
+          "E",
+          "CUW",
+          "CIV",
+          "Philadelphia",
+          0,
+          2,
+          "Côte d'Ivoire chase goal difference for the third-place race and Curaçao's fairy tale ends hard.",
+        ],
+        [
+          "m56",
+          "2026-06-25",
+          "E",
+          "ECU",
+          "GER",
+          "New York / New Jersey",
+          1,
+          1,
+          "Both through, but first place matters. Ecuador's low block frustrates Germany — honours even.",
+        ],
+        [
+          "m57",
+          "2026-06-25",
+          "F",
+          "JPN",
+          "SWE",
+          "Dallas",
+          2,
+          1,
+          "Japan finish the group strong; Sweden's tournament hangs on Gyökeres and he can't do it alone.",
+        ],
+        [
+          "m58",
+          "2026-06-25",
+          "F",
+          "TUN",
+          "NED",
+          "Kansas City",
+          0,
+          2,
+          "Netherlands top Group F with a professional, unspectacular job. Exactly how Koeman likes it.",
+        ],
+        [
+          "m59",
+          "2026-06-25",
+          "D",
+          "TUR",
+          "USA",
+          "Los Angeles",
+          1,
+          2,
+          "The group decider in LA. Türkiye's creators vs American athleticism and home noise — the hosts' depth in attack wins it late.",
+        ],
+        [
+          "m60",
+          "2026-06-25",
+          "D",
+          "PAR",
+          "AUS",
+          "San Francisco Bay Area",
+          1,
+          0,
+          "Loser is likely out. Paraguay win it the Paraguayan way: one set piece, then ten men behind the ball.",
+        ],
+        [
+          "m61",
+          "2026-06-26",
+          "I",
+          "NOR",
+          "FRA",
+          "Boston",
+          1,
+          2,
+          "Group I's heavyweight finale. Haaland scores — but France's depth tells over 90 minutes. Norway take third and sweat.",
+        ],
+        [
+          "m62",
+          "2026-06-26",
+          "I",
+          "SEN",
+          "IRQ",
+          "Toronto",
+          2,
+          0,
+          "Senegal secure progression with the controlled win they've needed all group.",
+        ],
+        [
+          "m63",
+          "2026-06-26",
+          "G",
+          "EGY",
+          "IRN",
+          "Seattle",
+          1,
+          1,
+          "Both fighting for second. A cagey draw that probably suits Egypt's goal difference more.",
+        ],
+        [
+          "m64",
+          "2026-06-26",
+          "G",
+          "NZL",
+          "BEL",
+          "Vancouver",
+          0,
+          3,
+          "Belgium pad the goal difference and rest legs for the knockouts.",
+        ],
+        [
+          "m65",
+          "2026-06-26",
+          "H",
+          "CPV",
+          "KSA",
+          "Houston",
+          1,
+          1,
+          "The pride match. Cabo Verde's spirit earns the point their tournament deserves.",
+        ],
+        [
+          "m66",
+          "2026-06-26",
+          "H",
+          "URU",
+          "ESP",
+          "Guadalajara",
+          0,
+          2,
+          "Top-spot decider. Bielsa's press vs Spain's midfield — and nobody presses Spain's midfield successfully for 90 minutes.",
+        ],
+        [
+          "m67",
+          "2026-06-27",
+          "L",
+          "PAN",
+          "ENG",
+          "New York / New Jersey",
+          0,
+          3,
+          "England top the group with ease and a clean bill of health — which is all Tuchel wants from this.",
+        ],
+        [
+          "m68",
+          "2026-06-27",
+          "L",
+          "CRO",
+          "GHA",
+          "Philadelphia",
+          2,
+          1,
+          "Nervy. Ghana push, Croatia's experience holds. Modrić walks off to second place.",
+        ],
+        [
+          "m69",
+          "2026-06-27",
+          "J",
+          "ALG",
+          "AUT",
+          "Kansas City",
+          1,
+          1,
+          "Both probably through; a tactical stalemate between two well-coached sides.",
+        ],
+        [
+          "m70",
+          "2026-06-27",
+          "J",
+          "JOR",
+          "ARG",
+          "Dallas",
+          0,
+          3,
+          "Argentina rotate and still cruise. Top spot, minimum fuss, Messi managed carefully.",
+        ],
+        [
+          "m71",
+          "2026-06-27",
+          "K",
+          "COL",
+          "POR",
+          "Miami",
+          1,
+          1,
+          "The top-spot decider, two sides with mutual respect and second-round maths in mind. A draw written in the stars.",
+        ],
+        [
+          "m72",
+          "2026-06-27",
+          "K",
+          "COD",
+          "UZB",
+          "Atlanta",
+          1,
+          1,
+          "Both chasing third-place arithmetic, neither able to land the punch.",
+        ],
+      ];
+
+      /* ============ SEED DATA (baked into the file) ============
+   Verified results & reports as of 12 Jun 2026 — so the dashboard shows real
+   data immediately in ANY environment, even before the first live sync.
+   Merged non-destructively: stored/live data always wins over the seed.    */
+      const SEED = {
+        results: {
+          m01: {
+            h: 2,
+            a: 0,
+            auto: true,
+            sc: "Quiñones 9' (eerste goal van het WK), Jiménez 2e helft (zijn eerste WK-goal ooit)",
+            yc: "",
+            rc: "Sithole (RSA), Zwane (RSA), Montes (MEX) — 3 rode kaarten, WK-record; alle drie geschorst voor de volgende wedstrijd",
+            inj: "",
+            motm: "Julián Quiñones — goal + aandeel in de tweede",
+            pen: "",
+            fh: "",
+            fa: "",
+            poss: "",
+            shots: "MEX 16 schoten (4 op doel)",
+            nt: "Mexico domineerde aan de Azteca maar was lang slordig in de afronding; de wedstrijd ontspoorde met drie rode kaarten (Zuid-Afrika eindigde met 9). Signaal voor speeldag 2: Mexico mist Montes centraal achterin tegen Korea; Zuid-Afrika mist Sithole en Zwane tegen Czechia.",
+          },
+          m02: {
+            h: 2,
+            a: 1,
+            auto: true,
+            sc: "CZE: Krejčí (kopbal, assist ingooi Coufal) — KOR: comeback via Hwang In-beom (goal + assist)",
+            yc: "",
+            rc: "",
+            inj: "",
+            motm: "Hwang In-beom — masterclass: goal én assist in de comeback",
+            pen: "",
+            fh: "",
+            fa: "",
+            poss: "",
+            shots: "",
+            nt: "Korea domineerde het balbezit, kwam achter via een Tsjechische ingooi-variant, maar draaide het om dankzij Hwang In-beom. Signaal: Korea's controle was beter dan mijn 1-1-call deed vermoeden; Czechia's set-piece-dreiging is reëel maar open spel mager.",
+          },
+        },
+        reported: { m01: true, m02: true },
+      };
+      function applySeed() {
+        for (const id in SEED.results) {
+          const seed = SEED.results[id],
+            cur = S.results[id];
+          if (!cur || cur.h == null) {
+            S.results[id] = {
+              ...seed,
+              ...(cur || {}),
+              h: seed.h,
+              a: seed.a,
+              auto: true,
+            };
+          } else {
+            for (const k in seed) {
+              if (cur[k] == null || cur[k] === "") cur[k] = seed[k];
+            }
+          }
+        }
+        for (const id in SEED.reported) {
+          if (SEED.reported[id]) S.reported[id] = S.reported[id] || true;
+        }
+      }
+
+      /* ============ STATE / STORAGE ============ */
+      const KEY = "wc2026-analyst";
+      let S = { results: {}, notebook: "" };
+
+      /* Dual-layer persistence: everything is cached so nothing is fetched twice.
+   Writes go to BOTH Claude artifact storage (when available) and the browser's
+   localStorage; reads prefer artifact storage and fall back to the local copy. */
+      const store = {
+        async get(k) {
+          if (window.storage) {
+            try {
+              const r = await window.storage.get(k);
+              if (r && r.value) return r;
+            } catch (e) {}
+          }
+          try {
+            const v = localStorage.getItem(k);
+            return v ? { key: k, value: v } : null;
+          } catch (e) {
+            return null;
+          }
+        },
+        async set(k, v) {
+          let ok = false;
+          if (window.storage) {
+            try {
+              ok = !!(await window.storage.set(k, v));
+            } catch (e) {}
+          }
+          try {
+            localStorage.setItem(k, v);
+            ok = true;
+          } catch (e) {}
+          return ok ? { key: k, value: v } : null;
+        },
+        async del(k) {
+          if (window.storage) {
+            try {
+              await window.storage.delete(k);
+            } catch (e) {}
+          }
+          try {
+            localStorage.removeItem(k);
+          } catch (e) {}
+          return null;
+        },
+      };
+
+      async function loadState() {
+        try {
+          const r = await store.get(KEY);
+          if (r && r.value) S = JSON.parse(r.value);
+        } catch (e) {
+          /* first run — key doesn't exist yet */
+        }
+        if (!S.results) S.results = {};
+        if (!S.calls)
+          S.calls = {}; /* mid -> {h,a,reason,at}  — live revised calls */
+        if (!S.reported)
+          S.reported = {}; /* mid -> true once AI match report stored */
+        if (typeof S.notebook !== "string") S.notebook = "";
+        applySeed(); /* baked-in verified data fills any gaps */
+      }
+      let saveTimer = null;
+      async function saveState() {
+        try {
+          const r = await store.set(KEY, JSON.stringify(S));
+          return !!r;
+        } catch (e) {
+          console.error("storage error", e);
+          return false;
+        }
+      }
+
+      /* ============ AUTO SCORE SYNC (official FIFA feed) ============ */
+      /* idCompetition=17, idSeason=285023, idStage=289273 (group stage). Map: my id -> FIFA IdMatch */
+      const FIFA_IDS = {
+        m01: "400021443",
+        m02: "400021441",
+        m03: "400021449",
+        m04: "400021458",
+        m05: "400021453",
+        m06: "400021463",
+        m07: "400021456",
+        m08: "400021447",
+        m09: "400021467",
+        m10: "400021464",
+        m11: "400021470",
+        m12: "400021474",
+        m13: "400021486",
+        m14: "400021482",
+        m15: "400021476",
+        m16: "400021478",
+        m17: "400021490",
+        m18: "400021488",
+        m19: "400021496",
+        m20: "400021498",
+        m21: "400021510",
+        m22: "400021507",
+        m23: "400021502",
+        m24: "400021504",
+        m25: "400021440",
+        m26: "400021446",
+        m27: "400021450",
+        m28: "400021442",
+        m29: "400021457",
+        m30: "400021454",
+        m31: "400021460",
+        m32: "400021462",
+        m33: "400021469",
+        m34: "400021465",
+        m35: "400021472",
+        m36: "400021475",
+        m37: "400021487",
+        m38: "400021483",
+        m39: "400021477",
+        m40: "400021480",
+        m41: "400021491",
+        m42: "400021492",
+        m43: "400021494",
+        m44: "400021499",
+        m45: "400021506",
+        m46: "400021511",
+        m47: "400021503",
+        m48: "400021501",
+        m49: "400021444",
+        m50: "400021445",
+        m51: "400021451",
+        m52: "400021448",
+        m53: "400021455",
+        m54: "400021452",
+        m55: "400021468",
+        m56: "400021466",
+        m57: "400021471",
+        m58: "400021473",
+        m59: "400021459",
+        m60: "400021461",
+        m61: "400021489",
+        m62: "400021493",
+        m63: "400021479",
+        m64: "400021481",
+        m65: "400021485",
+        m66: "400021484",
+        m67: "400021508",
+        m68: "400021509",
+        m69: "400021497",
+        m70: "400021495",
+        m71: "400021505",
+        m72: "400021500",
+      };
+      const FIFA_URL =
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=285023&idStage=289273&language=en&count=100";
+      const ID_TO_MID = Object.fromEntries(
+        Object.entries(FIFA_IDS).map(([k, v]) => [v, k]),
+      );
+      let liveScores = {}; // mid -> {h,a} for in-play matches (not persisted)
+
+      async function syncScores(manual) {
+        const bar = $("#syncmsg");
+        /* cache-first: skip the network entirely when the last sync is fresh */
+        if (
+          !manual &&
+          S.lastSyncAt &&
+          Date.now() - S.lastSyncAt < 4 * 60 * 1000
+        ) {
+          if (bar && S.lastSync)
+            bar.innerHTML = `Showing cached data · last synced <b>${S.lastSync}</b> — refreshes automatically.`;
+          return;
+        }
+        if (bar) bar.textContent = "Syncing with FIFA…";
+        try {
+          const resp = await fetch(FIFA_URL);
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          const data = await resp.json();
+          const results = data.Results || [];
+          let finals = 0,
+            live = 0;
+          liveScores = {};
+          for (const fm of results) {
+            const mid = ID_TO_MID[String(fm.IdMatch)];
+            if (!mid) continue;
+            const hs = fm.Home && fm.Home.Score,
+              as = fm.Away && fm.Away.Score;
+            if (hs == null || as == null) continue;
+            if (fm.MatchStatus === 0) {
+              // full-time, official
+              const prev = S.results[mid] || {};
+              if (prev.h !== hs || prev.a !== as) {
+                S.results[mid] = { ...prev, h: hs, a: as, auto: true };
+                finals++;
+              }
+            } else if (fm.MatchStatus === 3) {
+              // in play
+              liveScores[mid] = { h: hs, a: as };
+              live++;
+            }
+          }
+          S.lastSyncAt = Date.now();
+          if (finals) S.lastFinalAt = Date.now();
+          await saveState();
+          S.lastSync = new Date().toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          if (bar)
+            bar.innerHTML =
+              `Last synced <b>${S.lastSync}</b>` +
+              (finals
+                ? ` · <span style="color:var(--hit)">${finals} final${finals > 1 ? "s" : ""} updated</span>`
+                : " · no new finals") +
+              (live
+                ? ` · <span style="color:var(--amber)">${live} live</span>`
+                : "");
+          renderHead();
+          renderFixtures();
+          renderGroups();
+          renderAccuracy();
+          if (finals)
+            runEngine(); /* new full-time results → write reports + revise open calls */
+        } catch (e) {
+          console.warn(
+            "direct FIFA feed blocked here — falling back to AI score research",
+            e,
+          );
+          try {
+            const finals = await claudeScoreFallback();
+            S.lastSyncAt = Date.now();
+            if (finals) S.lastFinalAt = Date.now();
+            await saveState();
+            S.lastSync = new Date().toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            if (bar)
+              bar.innerHTML =
+                `Last synced <b>${S.lastSync}</b> via AI research` +
+                (finals
+                  ? ` · <span style="color:var(--hit)">${finals} final${finals > 1 ? "s" : ""} updated</span>`
+                  : " · no new finals");
+            renderHead();
+            renderFixtures();
+            renderGroups();
+            renderAccuracy();
+            if (finals) runEngine();
+          } catch (e2) {
+            console.warn("AI score fallback failed too", e2);
+            if (bar)
+              bar.innerHTML = `<span style="color:var(--miss)">Score sync unavailable here</span> — inside Claude everything updates automatically; opened locally the FIFA feed takes over. It will retry automatically on the next sync.`;
+          }
+        }
+      }
+
+      /* When the direct feed can't be reached (sandboxed preview), have Claude
+   research which fixtures have finished and verify the final scores. */
+      async function claudeScoreFallback() {
+        const today = new Date();
+        today.setHours(23, 59, 0, 0);
+        const due = M.filter(
+          (m) => !res(m[0]) && new Date(m[1] + "T00:00:00") <= today,
+        );
+        if (!due.length) return 0;
+        const list = due
+          .map((m) => `${m[0]}: ${T[m[3]].n} vs ${T[m[4]].n} on ${m[1]}`)
+          .join("\n");
+        const out = await askClaude(
+          `Search the web for FIFA World Cup 2026 results. Today is ${new Date().toISOString().slice(0, 10)}. For each fixture below, determine whether it has FINISHED and, if so, the verified full-time score:
+${list}
+Respond with ONLY a JSON object, no markdown:
+{"finals":[{"id":"m01","h":2,"a":0}, ...]}
+Include ONLY matches that are definitely finished with a score you verified from search results. If a match is still upcoming, in play today without a confirmed final score, or you cannot verify it, leave it out entirely. Never guess.`,
+        );
+        let n = 0;
+        for (const f of out.finals || []) {
+          const m = M.find((x) => x[0] === f.id);
+          if (!m || typeof f.h !== "number" || typeof f.a !== "number")
+            continue;
+          const prev = S.results[f.id] || {};
+          if (prev.h !== f.h || prev.a !== f.a) {
+            S.results[f.id] = { ...prev, h: f.h, a: f.a, auto: true };
+            n++;
+          }
+        }
+        if (n) await saveState();
+        return n;
+      }
+
+      /* ============ ANALYST ENGINE (Claude + web search) ============ */
+      /* Two jobs, run from inside the page:
    1. REPORT  — after each final whistle, research the match and fill the log:
                 scorers, cards, injuries, standout player, penalties, summary.
    2. REVISE  — for every unplayed match inside the 7-day window, re-make the
                 call using everything logged so far + fresh news. Nothing is
                 fixed until kickoff.                                          */
-let engineBusy = false;
+      let engineBusy = false;
 
-async function askClaude(prompt){
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model:"claude-sonnet-4-6",
-      max_tokens:1000,
-      messages:[{role:"user", content:prompt}],
-      tools:[{type:"web_search_20250305", name:"web_search"}]
-    })
-  });
-  if(!resp.ok) throw new Error("API "+resp.status);
-  const data = await resp.json();
-  const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-  const clean = text.replace(/```json|```/g,"").trim();
-  const m = clean.match(/\{[\s\S]*\}/);
-  if(!m) throw new Error("no JSON in reply");
-  return JSON.parse(m[0]);
-}
+      async function askClaude(prompt) {
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 1000,
+            messages: [{ role: "user", content: prompt }],
+            tools: [{ type: "web_search_20250305", name: "web_search" }],
+          }),
+        });
+        if (!resp.ok) throw new Error("API " + resp.status);
+        const data = await resp.json();
+        const text = (data.content || [])
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("\n");
+        const clean = text.replace(/```json|```/g, "").trim();
+        const m = clean.match(/\{[\s\S]*\}/);
+        if (!m) throw new Error("no JSON in reply");
+        return JSON.parse(m[0]);
+      }
 
-function teamDossier(code){
-  const lines = [];
-  for(const m of M){
-    if(m[3]!==code && m[4]!==code) continue;
-    const r = res(m[0]); if(!r) continue;
-    const d = S.results[m[0]]||{};
-    const us = m[3]===code, opp = us?m[4]:m[3];
-    const flip = s => { const x=(s||"").match(/(\d+)\D+(\d+)(.*)/); return x ? (us?s:`${x[2]}-${x[1]}${x[3]||""}`) : s; };
-    lines.push(`vs ${T[opp].n}: ${us?r.h+"-"+r.a:r.a+"-"+r.h} (${+r.h===+r.a?"D":(us?(+r.h>+r.a?"W":"L"):(+r.a>+r.h?"W":"L"))})`
-      + ((us?d.fh:d.fa)?` | formation: ${us?d.fh:d.fa}`:"")
-      + (d.poss?` | possession: ${flip(d.poss)}%`:"")
-      + (d.shots?` | shots: ${flip(d.shots)}`:"")
-      + (d.inj?` | injuries: ${d.inj}`:"")
-      + (d.yc?` | yellows: ${d.yc}`:"")
-      + (d.rc?` | reds: ${d.rc}`:"")
-      + (d.motm?` | standout: ${d.motm}`:"")
-      + (d.nt?` | notes: ${d.nt.slice(0,180)}`:""));
-  }
-  return lines.length ? lines.join("\n") : "No tournament matches played yet.";
-}
+      function teamDossier(code) {
+        const lines = [];
+        for (const m of M) {
+          if (m[3] !== code && m[4] !== code) continue;
+          const r = res(m[0]);
+          if (!r) continue;
+          const d = S.results[m[0]] || {};
+          const us = m[3] === code,
+            opp = us ? m[4] : m[3];
+          const flip = (s) => {
+            const x = (s || "").match(/(\d+)\D+(\d+)(.*)/);
+            return x ? (us ? s : `${x[2]}-${x[1]}${x[3] || ""}`) : s;
+          };
+          lines.push(
+            `vs ${T[opp].n}: ${us ? r.h + "-" + r.a : r.a + "-" + r.h} (${+r.h === +r.a ? "D" : us ? (+r.h > +r.a ? "W" : "L") : +r.a > +r.h ? "W" : "L"})` +
+              ((us ? d.fh : d.fa) ? ` | formation: ${us ? d.fh : d.fa}` : "") +
+              (d.poss ? ` | possession: ${flip(d.poss)}%` : "") +
+              (d.shots ? ` | shots: ${flip(d.shots)}` : "") +
+              (d.inj ? ` | injuries: ${d.inj}` : "") +
+              (d.yc ? ` | yellows: ${d.yc}` : "") +
+              (d.rc ? ` | reds: ${d.rc}` : "") +
+              (d.motm ? ` | standout: ${d.motm}` : "") +
+              (d.nt ? ` | tactical read: ${d.nt.slice(0, 180)}` : "") +
+              (d.un ? ` | analyst note: ${d.un.slice(0, 180)}` : ""),
+          );
+        }
+        return lines.length
+          ? lines.join("\n")
+          : "No tournament matches played yet.";
+      }
 
-async function fetchReport(m){
-  const [id,date,g,h,a,venue] = m;
-  const r = res(id); if(!r) return false;
-  const out = await askClaude(
-`You are a football match researcher. Search the web for the FIFA World Cup 2026 group-stage match: ${T[h].n} vs ${T[a].n}, played ${date} at ${venue}. Final score was ${r.h}-${r.a}.
+      async function fetchReport(m) {
+        const [id, date, g, h, a, venue] = m;
+        const r = res(id);
+        if (!r) return false;
+        const out = await askClaude(
+          `You are a football match researcher. Search the web for the FIFA World Cup 2026 group-stage match: ${T[h].n} vs ${T[a].n}, played ${date} at ${venue}. Final score was ${r.h}-${r.a}.
 Find official match details AND statistics, then respond with ONLY a JSON object, no markdown, no preamble:
 {"fh":"${T[h].n} formation e.g. 4-3-3","fa":"${T[a].n} formation","poss":"possession as H-A e.g. 62-38","shots":"total shots H-A with on-target in brackets e.g. 14-7 (6-3)","sc":"goalscorers with minutes","yc":"yellow cards (player, minute)","rc":"red cards or empty string","inj":"injuries or empty string","motm":"standout player and one short reason","pen":"penalties awarded/missed, key VAR calls, or empty string","nt":"2-3 sentence tactical read: how the match was won, the formation battle, and form signals for each team's NEXT match"}
-Use empty strings when a detail can't be verified. Be factual.`);
-  const prev = S.results[id]||{};
-  const merged = {...prev};
-  for(const k of ["sc","yc","rc","inj","motm","pen","fh","fa","poss","shots"]) if(!prev[k]) merged[k] = out[k]||"";
-  merged.nt = prev.nt ? prev.nt : (out.nt||"");
-  merged.aiReport = true;
-  S.results[id] = merged;
-  S.reported[id] = true;
-  return true;
-}
+Use empty strings when a detail can't be verified. Be factual.`,
+        );
+        const prev = S.results[id] || {};
+        const merged = { ...prev };
+        for (const k of [
+          "sc",
+          "yc",
+          "rc",
+          "inj",
+          "motm",
+          "pen",
+          "fh",
+          "fa",
+          "poss",
+          "shots",
+          "nt",
+        ])
+          merged[k] = out[k] || prev[k] || "";
+        merged.aiReport = true;
+        S.results[id] = merged;
+        S.reported[id] = true;
+        return true;
+      }
 
-async function reviseCall(m){
-  const [id,date,g,h,a,venue] = m;
-  const cur = effCall(m);
-  const out = await askClaude(
-`You are a rigorous football analyst at the FIFA World Cup 2026 (48 teams). Re-assess your score prediction for the upcoming Group ${g} match: ${T[h].n} vs ${T[a].n} on ${date} at ${venue}.
+      async function reviseCall(m) {
+        const [id, date, g, h, a, venue] = m;
+        const cur = effCall(m);
+        const out = await askClaude(
+          `Je bent een rigoureuze voetbalanalist op het WK 2026 (48 teams). Heranalyseer de aankomende Groep ${g}-wedstrijd: ${T[h].n} – ${T[a].n} op ${date} in ${venue}.
 
-Your current call: ${T[h].n} ${cur.h}-${cur.a} ${T[a].n}. Original rationale: ${m[8]}
+Huidige call: ${T[h].n} ${cur.h}-${cur.a} ${T[a].n}. Oorspronkelijke rationale: ${m[8]}
 
-Tournament dossiers (results, formations, possession, shots, cards, injuries, standouts, my notes) —
+Toernooidossiers tot nu toe (uitslagen, formaties, balbezit, schoten, kaarten, blessures, uitblinkers, notities) —
 ${T[h].n}:\n${teamDossier(h)}\n
 ${T[a].n}:\n${teamDossier(a)}
 
-Method — compare the two profiles head-to-head:
-1. Style matchup: their formations and possession shares against each other (e.g. a 62% possession side vs a deep 4-4-2 counter side changes the goal expectation).
-2. Chance creation vs chances conceded: shots for/against trends.
-3. Availability: confirmed injuries, suspensions from cards, fatigue.
-4. Stakes: what each side needs from the group table.
-Also search the web for the latest team news and expected lineups. Weigh tournament evidence heavily; pre-tournament reputation lightly. Then respond with ONLY a JSON object, no markdown:
-{"h": <predicted goals ${T[h].n}>, "a": <predicted goals ${T[a].n}>, "reason": "2-3 sentences naming the decisive factors from the comparison"}
-Keep the existing score if the evidence doesn't justify a change.`);
-  if(typeof out.h!=="number" || typeof out.a!=="number") throw new Error("bad revision");
-  const changed = out.h!==cur.h || out.a!==cur.a;
-  S.calls[id] = {h:out.h, a:out.a, reason:out.reason||cur.reason, at:new Date().toISOString().slice(0,16).replace("T"," ")};
-  return changed;
-}
+METHODE — doorloop per team de checklist via webresearch (gebruik uitsluitend de meest recente informatie):
+1. Selectie & beschikbaarheid: bondscoach, verwachte basiself, sterspelers, blessures, schorsingen (gele kaarten!), twijfelgevallen.
+2. Vorm: laatste 5-10 wedstrijden, doelpunten voor/tegen, clean sheets, vormcurve (stijgend/stabiel/dalend).
+3. Tactische matchup: speelsysteem vs speelsysteem, aanvallende/verdedigende sterktes, kwetsbaarheden tegen elkaars stijl (balbezit vs laag blok, pressing vs opbouw).
+4. Externe factoren: psychologie, belang van de wedstrijd voor de groepsstand, vermoeidheid, reisbelasting, klimaat, intern nieuws.
+Weeg toernooibewijs zwaar; reputatie licht. Wees eerlijk over onzekerheid — confidence is een modelinschatting, geen garantie.
 
-function revisable(m){
-  const today = new Date(); today.setHours(0,0,0,0);
-  return callOpen(m) && !res(m[0]) && !liveScores[m[0]] && new Date(m[1]+"T00:00:00") >= today;
-}
+Antwoord met UITSLUITEND een JSON-object, geen markdown:
+{"h":<voorspelde goals ${T[h].n}>,"a":<voorspelde goals ${T[a].n}>,
+"probs":{"h":<winstkans ${T[h].n} %>,"d":<gelijkspel %>,"a":<winstkans ${T[a].n} %>},
+"top3":["2-1 (12%)","1-1 (11%)","1-0 (10%)"],
+"markets":[{"m":"1X2","p":"<keuze>","c":<confidence 0-100>},{"m":"Dubbele kans","p":"<1X/12/X2>","c":<c>},{"m":"BTTS","p":"<Ja/Nee>","c":<c>},{"m":"O/U 2.5","p":"<Over/Onder>","c":<c>},{"m":"O/U 3.5","p":"<Over/Onder>","c":<c>},{"m":"Aziatisch handicap","p":"<bv. ${T[h].n} -1>","c":<c>}],
+"reason":"2-4 zinnen in het Nederlands: de doorslaggevende factoren uit de vergelijking (blessures, tactische matchup, vorm, inzet)"}
+probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijziging rechtvaardigt.`,
+        );
+        if (typeof out.h !== "number" || typeof out.a !== "number")
+          throw new Error("bad revision");
+        const changed = out.h !== cur.h || out.a !== cur.a;
+        S.calls[id] = {
+          h: out.h,
+          a: out.a,
+          reason: out.reason || cur.reason,
+          probs:
+            out.probs && typeof out.probs.h === "number" ? out.probs : null,
+          top3: Array.isArray(out.top3) ? out.top3.slice(0, 3) : null,
+          markets: Array.isArray(out.markets) ? out.markets.slice(0, 8) : null,
+          ts: Date.now(),
+          at: new Date().toISOString().slice(0, 16).replace("T", " "),
+        };
+        return changed;
+      }
 
-async function runEngine(){
-  if(engineBusy) return;
-  engineBusy = true;
-  const bar = $("#aimsg");
-  const set = t => { if(bar) bar.innerHTML = t; };
-  try{
-    const needReport = M.filter(m=>res(m[0]) && !S.reported[m[0]]);
-    const needRevise = M.filter(revisable);
-    if(!needReport.length && !needRevise.length){ set("Everything is current — nothing to report or revise."); engineBusy=false; return; }
-    let done=0, changedCalls=0; const total=needReport.length+needRevise.length;
-    for(const m of needReport){
-      set(`Writing match report ${++done}/${total}: ${T[m[3]].n}–${T[m[4]].n}…`);
-      try{ await fetchReport(m); await saveState(); }catch(e){ console.warn("report failed",m[0],e); }
-    }
-    for(const m of needRevise){
-      set(`Re-analysing call ${++done}/${total}: ${T[m[3]].n}–${T[m[4]].n}…`);
-      try{ if(await reviseCall(m)) changedCalls++; await saveState(); }catch(e){ console.warn("revise failed",m[0],e); }
-    }
-    S.lastEngine = Date.now();
-    await saveState();
-    set(`Analysis updated ${new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})} · ${needReport.length} report${needReport.length===1?"":"s"} written · ${needRevise.length} calls re-checked, <b style="color:var(--amber)">${changedCalls} revised</b>.`);
-    renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-  }catch(e){
-    console.warn("engine failed", e);
-    set(`<span style="color:var(--miss)">Analyst engine unavailable here</span> — it runs when this dashboard is opened inside Claude. Outside Claude, log details manually or bring results to the chat and I'll update the calls with you.`);
-  }
-  engineBusy = false;
-}
+      function revisable(m) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return (
+          callOpen(m) &&
+          !res(m[0]) &&
+          !liveScores[m[0]] &&
+          new Date(m[1] + "T00:00:00") >= today
+        );
+      }
+      /* Cache rule: an analysis is reused from storage unless (a) it has never been made,
+   (b) new final results arrived after it (the dossiers changed), or
+   (c) it is older than 12 hours (news refresh). Manual re-analyse always bypasses. */
+      function needsRevision(m) {
+        const c = S.calls[m[0]];
+        if (!c || !c.ts) return true;
+        if (S.lastFinalAt && S.lastFinalAt > c.ts) return true;
+        if (Date.now() - c.ts > 12 * 60 * 60 * 1000) return true;
+        return false;
+      }
 
-/* ============ HELPERS ============ */
-const $ = s => document.querySelector(s);
-const fmtDate = d => new Date(d+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
-/* Calls are published on a rolling 7-day window: a match's prediction only
+      async function runEngine() {
+        if (engineBusy) return;
+        engineBusy = true;
+        const bar = $("#aimsg");
+        const set = (t) => {
+          if (bar) bar.innerHTML = t;
+        };
+        try {
+          const needReport = M.filter((m) => res(m[0]) && !S.reported[m[0]]);
+          const inWindow = M.filter(revisable);
+          const needRevise = inWindow.filter(needsRevision);
+          const cached = inWindow.length - needRevise.length;
+          if (!needReport.length && !needRevise.length) {
+            set(
+              `Everything served from cache — ${cached} analyses fresh, nothing to re-fetch.`,
+            );
+            engineBusy = false;
+            return;
+          }
+          let done = 0,
+            changedCalls = 0;
+          const total = needReport.length + needRevise.length;
+          for (const m of needReport) {
+            set(
+              `Writing match report ${++done}/${total}: ${T[m[3]].n}–${T[m[4]].n}…`,
+            );
+            try {
+              await fetchReport(m);
+              await saveState();
+            } catch (e) {
+              console.warn("report failed", m[0], e);
+            }
+          }
+          for (const m of needRevise) {
+            set(
+              `Re-analysing call ${++done}/${total}: ${T[m[3]].n}–${T[m[4]].n}…`,
+            );
+            try {
+              if (await reviseCall(m)) changedCalls++;
+              await saveState();
+            } catch (e) {
+              console.warn("revise failed", m[0], e);
+            }
+          }
+          S.lastEngine = Date.now();
+          await saveState();
+          set(
+            `Analysis updated ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${needReport.length} report${needReport.length === 1 ? "" : "s"} written · ${needRevise.length} call${needRevise.length === 1 ? "" : "s"} re-analysed (<b style="color:var(--amber)">${changedCalls} changed</b>) · ${cached} served from cache.`,
+          );
+          renderHead();
+          renderFixtures();
+          renderGroups();
+          renderAccuracy();
+        } catch (e) {
+          console.warn("engine failed", e);
+          set(
+            `<span style="color:var(--miss)">Analyst engine unavailable here</span> — it runs when this dashboard is opened inside Claude. Outside Claude, log details manually or bring results to the chat and I'll update the calls with you.`,
+          );
+        }
+        engineBusy = false;
+      }
+
+      /* ============ HELPERS ============ */
+      const $ = (s) => document.querySelector(s);
+      const fmtDate = (d) =>
+        new Date(d + "T12:00:00").toLocaleDateString("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        });
+      /* Calls are published on a rolling 7-day window: a match's prediction only
    appears once kickoff is within the next 7 days (or the match is in the past). */
-const WINDOW_DAYS = 7;
-function callOpen(m){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const kd = new Date(m[1]+"T00:00:00");
-  return (kd - today) / 86400000 <= WINDOW_DAYS;
-}
-function opensOn(m){
-  const kd = new Date(m[1]+"T12:00:00");
-  kd.setDate(kd.getDate() - WINDOW_DAYS);
-  return kd.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
-}
-function res(id){ const r=S.results[id]; return (r && r.h!=="" && r.h!=null && r.a!=="" && r.a!=null) ? r : null; }
-function sign(h,a){ return h>a?1:(h<a?-1:0); }
-/* The call that counts = the latest revision before kickoff; falls back to the opening call */
-function effCall(m){
-  const c = S.calls[m[0]];
-  if(c && c.h!=null && c.a!=null) return {h:+c.h, a:+c.a, reason:c.reason||m[8], revised:true, at:c.at};
-  return {h:m[6], a:m[7], reason:m[8], revised:false};
-}
-function verdict(m){
-  const r = res(m[0]); if(!r) return null;
-  const c = effCall(m);
-  const ah=+r.h, aa=+r.a;
-  if(c.h===ah && c.a===aa) return "exact";
-  if(sign(c.h,c.a)===sign(ah,aa)) return "outcome";
-  return "wrong";
-}
-function goalErr(m){ const r=res(m[0]); if(!r) return 0; const c=effCall(m); return Math.abs(c.h-+r.h)+Math.abs(c.a-+r.a); }
-function esc(s){ return (s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+      const WINDOW_DAYS = 7;
+      function callOpen(m) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const kd = new Date(m[1] + "T00:00:00");
+        return (kd - today) / 86400000 <= WINDOW_DAYS;
+      }
+      function opensOn(m) {
+        const kd = new Date(m[1] + "T12:00:00");
+        kd.setDate(kd.getDate() - WINDOW_DAYS);
+        return kd.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+        });
+      }
+      function res(id) {
+        const r = S.results[id];
+        return r && r.h !== "" && r.h != null && r.a !== "" && r.a != null
+          ? r
+          : null;
+      }
+      function sign(h, a) {
+        return h > a ? 1 : h < a ? -1 : 0;
+      }
+      /* The call that counts = the latest revision before kickoff; falls back to the opening call */
+      function effCall(m) {
+        const c = S.calls[m[0]];
+        if (c && c.h != null && c.a != null)
+          return {
+            h: +c.h,
+            a: +c.a,
+            reason: c.reason || m[8],
+            revised: true,
+            at: c.at,
+          };
+        return { h: m[6], a: m[7], reason: m[8], revised: false };
+      }
+      function verdict(m) {
+        const r = res(m[0]);
+        if (!r) return null;
+        const c = effCall(m);
+        const ah = +r.h,
+          aa = +r.a;
+        if (c.h === ah && c.a === aa) return "exact";
+        if (sign(c.h, c.a) === sign(ah, aa)) return "outcome";
+        return "wrong";
+      }
+      function goalErr(m) {
+        const r = res(m[0]);
+        if (!r) return 0;
+        const c = effCall(m);
+        return Math.abs(c.h - +r.h) + Math.abs(c.a - +r.a);
+      }
+      function esc(s) {
+        return (s || "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      }
 
-/* ============ HEADER STATS ============ */
-function renderHead(){
-  const played = M.filter(m=>res(m[0]));
-  const ex = played.filter(m=>verdict(m)==="exact").length;
-  const oc = played.filter(m=>verdict(m)==="outcome").length;
-  const wr = played.filter(m=>verdict(m)==="wrong").length;
-  const openCalls = M.filter(m=>!res(m[0]) && callOpen(m)).length;
-  let html = `<div class="stat amber"><div class="num">${played.length}<span style="font-size:16px;color:var(--muted)">/72</span></div><div class="lbl">Matches logged</div></div>
+      /* ============ HEADER STATS ============ */
+      function renderHead() {
+        const played = M.filter((m) => res(m[0]));
+        const ex = played.filter((m) => verdict(m) === "exact").length;
+        const oc = played.filter((m) => verdict(m) === "outcome").length;
+        const wr = played.filter((m) => verdict(m) === "wrong").length;
+        const openCalls = M.filter((m) => !res(m[0]) && callOpen(m)).length;
+        let html = `<div class="stat amber"><div class="num">${played.length}<span style="font-size:16px;color:var(--muted)">/72</span></div><div class="lbl">Matches logged</div></div>
     <div class="stat"><div class="num">${openCalls}</div><div class="lbl">Calls open (next 7 days)</div></div>`;
-  if(played.length){
-    const pct = Math.round(100*(ex+oc)/played.length);
-    html += `<div class="stat hit"><div class="num">${ex}</div><div class="lbl">Exact scores</div></div>
+        if (played.length) {
+          const pct = Math.round((100 * (ex + oc)) / played.length);
+          html += `<div class="stat hit"><div class="num">${ex}</div><div class="lbl">Exact scores</div></div>
       <div class="stat part"><div class="num">${oc}</div><div class="lbl">Right outcome</div></div>
       <div class="stat miss"><div class="num">${wr}</div><div class="lbl">Wrong calls</div></div>
       <div class="stat"><div class="num">${pct}%</div><div class="lbl">Outcome accuracy</div></div>`;
-  } else {
-    html += `<div class="stat"><div class="num">12</div><div class="lbl">Groups</div></div>`;
-  }
-  $("#headstats").innerHTML = html;
-}
+        } else {
+          html += `<div class="stat"><div class="num">12</div><div class="lbl">Groups</div></div>`;
+        }
+        $("#headstats").innerHTML = html;
+      }
 
-/* ============ FIXTURES ============ */
-function statStrip(id,h,a,d){
-  if(!d.poss && !d.fh && !d.shots) return "";
-  let bar="";
-  const pm=(d.poss||"").match(/(\d{1,2})\D+(\d{1,2})/);
-  if(pm){
-    const ph=+pm[1], pa=+pm[2];
-    bar = `<div class="possbar"><div style="width:${ph}%"></div></div>
+      /* ============ FIXTURES ============ */
+      const openSet =
+        new Set(); /* which match panels are expanded — survives re-renders */
+
+      function analysisBlock(id, h, a) {
+        const c = S.calls[id];
+        if (!c || !c.probs) return "";
+        const p = c.probs;
+        let html = `<div class="anablock">
+    <div class="anahdr">Kansberekening</div>
+    <div class="probbar">
+      <div class="ph" style="width:${p.h}%"></div><div class="pd" style="width:${p.d}%"></div><div class="pa" style="width:${p.a}%"></div>
+    </div>
+    <div class="probnum"><span>${T[h].f} ${p.h}%</span><span>gelijk ${p.d}%</span><span>${p.a}% ${T[a].f}</span></div>`;
+        if (c.top3 && c.top3.length) {
+          html += `<div class="anahdr" style="margin-top:10px">Meest waarschijnlijke uitslagen</div>
+      <div class="chips">${c.top3.map((s) => `<span class="chip">${esc(s)}</span>`).join("")}</div>`;
+        }
+        if (c.markets && c.markets.length) {
+          html += `<div class="anahdr" style="margin-top:10px">Markten <span class="mknote">— modelinschattingen, geen garanties; vergelijk zelf met actuele odds</span></div>
+      <table class="mktable">${c.markets
+        .map(
+          (mk) =>
+            `<tr><td>${esc(mk.m)}</td><td>${esc(mk.p)}</td><td class="conf"><span class="confbar"><span style="width:${Math.max(0, Math.min(100, +mk.c || 0))}%"></span></span>${Math.max(0, Math.min(100, +mk.c || 0))}%</td></tr>`,
+        )
+        .join("")}
+      </table>`;
+        }
+        return html + `</div>`;
+      }
+
+      function statStrip(id, h, a, d) {
+        if (!d.poss && !d.fh && !d.shots) return "";
+        let bar = "";
+        const pm = (d.poss || "").match(/(\d{1,2})\D+(\d{1,2})/);
+        if (pm) {
+          const ph = +pm[1],
+            pa = +pm[2];
+          bar = `<div class="possbar"><div style="width:${ph}%"></div></div>
       <div class="possnum"><span>${T[h].f} ${ph}%</span><span>possession</span><span>${pa}% ${T[a].f}</span></div>`;
-  }
-  return `<div class="statstrip">
-    ${(d.fh||d.fa)?`<div class="statline"><span>${T[h].f} ${esc(d.fh)||"?"}</span><span class="statlbl">formation</span><span>${esc(d.fa)||"?"} ${T[a].f}</span></div>`:""}
+        }
+        return `<div class="statstrip">
+    ${d.fh || d.fa ? `<div class="statline"><span>${T[h].f} ${esc(d.fh) || "?"}</span><span class="statlbl">formation</span><span>${esc(d.fa) || "?"} ${T[a].f}</span></div>` : ""}
     ${bar}
-    ${d.shots?`<div class="statline"><span class="statlbl">shots (on target):</span><span>${esc(d.shots)}</span></div>`:""}
+    ${d.shots ? `<div class="statline"><span class="statlbl">shots (on target):</span><span>${esc(d.shots)}</span></div>` : ""}
   </div>`;
-}
+      }
 
-function matchCard(m){
-  const [id,date,g,h,a,venue,ph,pa,reason] = m;
-  const r = res(id), v = verdict(m);
-  const vCls = v ? "v-"+v : "";
-  const vTxt = v==="exact" ? "✓ Exact" : v==="outcome" ? "◐ Right outcome" : v==="wrong" ? "✕ Wrong call" : "";
-  const d = S.results[id]||{};
-  const open = callOpen(m);
-  const c = effCall(m);
-  const lv = !r && liveScores[id];
-  const stamp = open
-    ? `<div class="stamp">CALL ${c.h}–${c.a}${c.revised?" ↻":""}</div>`
-    : `<div class="stamp locked">CALL OPENS ${opensOn(m).toUpperCase()}</div>`;
-  const scoreHtml = r
-    ? `<div class="score">${r.h} – ${r.a}</div>${stamp}${r.auto?`<div class="autotag">auto · FIFA</div>`:""}`
-    : lv
-      ? `<div class="score">${lv.h} – ${lv.a}</div><div class="live-pill">LIVE</div>`
-      : `<div class="score pending">v</div>${stamp}`;
-  return `<div class="match ${r?'played':''} ${vCls}" id="${id}">
+      function matchCard(m) {
+        const [id, date, g, h, a, venue, ph, pa, reason] = m;
+        const r = res(id),
+          v = verdict(m);
+        const vCls = v ? "v-" + v : "";
+        const vTxt =
+          v === "exact"
+            ? "✓ Exact"
+            : v === "outcome"
+              ? "◐ Right outcome"
+              : v === "wrong"
+                ? "✕ Wrong call"
+                : "";
+        const d = S.results[id] || {};
+        const open = callOpen(m);
+        const c = effCall(m);
+        const lv = !r && liveScores[id];
+        const stamp = open
+          ? `<div class="stamp">CALL ${c.h}–${c.a}${c.revised ? " ↻" : ""}</div>`
+          : `<div class="stamp locked">CALL OPENS ${opensOn(m).toUpperCase()}</div>`;
+        const scoreHtml = r
+          ? `<div class="score">${r.h} – ${r.a}</div>${stamp}${r.auto ? `<div class="autotag">auto · FIFA</div>` : ""}`
+          : lv
+            ? `<div class="score">${lv.h} – ${lv.a}</div><div class="live-pill">LIVE</div>`
+            : `<div class="score pending">v</div>${stamp}`;
+        return `<div class="match ${r ? "played" : ""} ${vCls} ${openSet.has(id) ? "open" : ""}" id="${id}">
     <div class="mrow" onclick="toggle('${id}')">
       <div class="gbadge">${g}</div>
       <div class="team right"><span>${T[h].n}</span><span class="flag">${T[h].f}</span></div>
       <div class="scorebox">${scoreHtml}</div>
       <div class="team"><span class="flag">${T[a].f}</span><span>${T[a].n}</span></div>
-      <div class="meta">${venue}<br>${v?`<span class="verdict ${v}">${vTxt}</span>`:fmtDate(date).split(",")[0]}</div>
+      <div class="meta">${venue}<br>${v ? `<span class="verdict ${v}">${vTxt}</span>` : fmtDate(date).split(",")[0]}</div>
     </div>
     <div class="panel">
-      ${open
-        ? `<div class="reason"><b>${c.revised?"Revised call":"My call"}: ${T[h].n} ${c.h}–${c.a} ${T[a].n}.</b> ${esc(c.reason)}
-            ${c.revised?`<div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Opening call was ${ph}–${pa} · revised ${c.at||""} after weighing tournament form and news. No number is fixed until kickoff.</div>`:""}</div>`
-        : `<div class="reason locked"><b>Call not published yet.</b> I make each prediction inside the 7 days before kickoff, so it reflects the latest form, fitness and group situation — this one opens on ${opensOn(m)}. You can already log details here if needed.</div>`}
-      ${statStrip(id,h,a,d)}
-      <div class="formgrid">
-        <div class="field"><label>Full-time score</label>
-          <div class="scoreinputs">
-            <input type="number" min="0" max="15" id="${id}-h" value="${r?r.h:""}" placeholder="–">
-            <span style="color:var(--muted)">:</span>
-            <input type="number" min="0" max="15" id="${id}-a" value="${r?r.a:""}" placeholder="–">
-          </div></div>
-        <div class="field"><label>Formations (${T[h].n} / ${T[a].n})</label>
-          <div class="scoreinputs">
-            <input id="${id}-fh" value="${esc(d.fh)}" placeholder="4-3-3" style="width:90px;font-size:13px;font-family:var(--body)">
-            <span style="color:var(--muted)">/</span>
-            <input id="${id}-fa" value="${esc(d.fa)}" placeholder="4-4-2" style="width:90px;font-size:13px;font-family:var(--body)">
-          </div></div>
-        <div class="field"><label>Possession % (${T[h].n}–${T[a].n})</label><input id="${id}-poss" value="${esc(d.poss)}" placeholder="e.g. 62–38"></div>
-        <div class="field"><label>Shots (on target)</label><input id="${id}-shots" value="${esc(d.shots)}" placeholder="e.g. 14–7 (6–3)"></div>
-        <div class="field"><label>Goalscorers</label><input id="${id}-sc" value="${esc(d.sc)}" placeholder="e.g. Gakpo 23', Kubo 67'"></div>
-        <div class="field"><label>Yellow cards</label><input id="${id}-yc" value="${esc(d.yc)}" placeholder="e.g. De Jong 41'"></div>
-        <div class="field"><label>Red cards</label><input id="${id}-rc" value="${esc(d.rc)}" placeholder="–"></div>
-        <div class="field"><label>Injuries</label><input id="${id}-inj" value="${esc(d.inj)}" placeholder="e.g. Frimpong (hamstring, 55')"></div>
-        <div class="field"><label>Standout player</label><input id="${id}-motm" value="${esc(d.motm)}" placeholder="Man of the match"></div>
-        <div class="field"><label>Penalties / VAR</label><input id="${id}-pen" value="${esc(d.pen)}" placeholder="e.g. pen scored 78', goal disallowed"></div>
-      </div>
-      <div class="field" style="margin-top:12px"><label>Match notes — what I saw, what it means for the next game</label>
-        <textarea id="${id}-nt" placeholder="Tactical observations, form, fatigue, patterns…">${esc(d.nt)}</textarea></div>
+      ${
+        open
+          ? `<div class="reason"><b>${c.revised ? "Revised call" : "My call"}: ${T[h].n} ${c.h}–${c.a} ${T[a].n}.</b> ${esc(c.reason)}
+            ${c.revised ? `<div style="margin-top:5px;font-size:11.5px;color:var(--muted)">Opening call was ${ph}–${pa} · revised ${c.at || ""} after weighing tournament form and news. No number is fixed until kickoff.</div>` : ""}</div>`
+          : `<div class="reason locked"><b>Call not published yet.</b> I make each prediction inside the 7 days before kickoff, so it reflects the latest form, fitness and group situation — this one opens on ${opensOn(m)}. You can already leave a note here if something's on your mind about this one.</div>`
+      }
+      ${open && !r ? analysisBlock(id, h, a) : ""}
+      ${statStrip(id, h, a, d)}
+      ${r ? dossier(id, d) : ""}
+      <div class="field" style="margin-top:12px"><label>My notes — the only thing you ever type here</label>
+        <textarea id="${id}-un" placeholder="Your own observations on top of the auto-report…">${esc(d.un)}</textarea></div>
       <div class="actions">
-        <button class="primary" onclick="saveMatch('${id}')">Save match</button>
-        ${r?`<button class="ghost" onclick="aiOne('${id}','report')">✦ ${S.reported[id]?"Refresh":"Fetch"} match report (AI)</button>`:""}
-        ${(!r && open)?`<button class="ghost" onclick="aiOne('${id}','revise')">✦ Re-analyse this call now</button>`:""}
-        ${r?`<button class="ghost" onclick="clearMatch('${id}')">Clear result</button>`:""}
+        <button class="primary" onclick="saveNote('${id}')">Save note</button>
+        ${r ? `<button class="ghost" onclick="aiOne('${id}','report')">✦ ${S.reported[id] ? "Refresh" : "Fetch"} match report</button>` : ""}
+        ${!r && open ? `<button class="ghost" onclick="aiOne('${id}','revise')">✦ Re-analyse this call now</button>` : ""}
         <span class="savedmsg" id="${id}-msg"></span>
       </div>
     </div>
   </div>`;
-}
+      }
 
-function renderFixtures(){
-  const fg=$("#f-group").value, fs=$("#f-status").value, q=$("#f-search").value.trim().toLowerCase();
-  let list = M.filter(m=>{
-    if(fg && m[2]!==fg) return false;
-    const played = !!res(m[0]);
-    if(fs==="played" && !played) return false;
-    if(fs==="upcoming" && played) return false;
-    if(fs==="window" && (played || !callOpen(m))) return false;
-    if(q && !(T[m[3]].n.toLowerCase().includes(q)||T[m[4]].n.toLowerCase().includes(q))) return false;
-    return true;
-  });
-  if(!list.length){ $("#fixturelist").innerHTML = `<div class="empty">No matches found — adjust the filters.</div>`; return; }
-  let html="", lastDate="";
-  for(const m of list){
-    if(m[1]!==lastDate){ html += `<div class="dayhdr">${fmtDate(m[1])}</div>`; lastDate=m[1]; }
-    html += matchCard(m);
-  }
-  $("#fixturelist").innerHTML = html;
-}
+      function dossier(id, d) {
+        const v = (x) => (x ? esc(x) : `<span class="dempty">—</span>`);
+        const pending = !S.reported[id]
+          ? `<div class="dpending">✦ Match report writes itself automatically shortly after full-time — fetching on the next engine run.</div>`
+          : "";
+        return `<div class="dossier">${pending}
+    <div class="drow"><span class="dlbl">Goals</span><span>${v(d.sc)}</span></div>
+    <div class="drow"><span class="dlbl">Yellow cards</span><span>${v(d.yc)}</span></div>
+    <div class="drow"><span class="dlbl">Red cards</span><span>${v(d.rc)}</span></div>
+    <div class="drow"><span class="dlbl">Injuries</span><span>${v(d.inj)}</span></div>
+    <div class="drow"><span class="dlbl">Standout</span><span>${v(d.motm)}</span></div>
+    <div class="drow"><span class="dlbl">Pens / VAR</span><span>${v(d.pen)}</span></div>
+    <div class="drow"><span class="dlbl">Tactical read</span><span>${v(d.nt)}</span></div>
+  </div>`;
+      }
 
-window.toggle = id => { document.getElementById(id).classList.toggle("open"); };
+      function renderFixtures() {
+        const fg = $("#f-group").value,
+          fs = $("#f-status").value,
+          q = $("#f-search").value.trim().toLowerCase();
+        let list = M.filter((m) => {
+          if (fg && m[2] !== fg) return false;
+          const played = !!res(m[0]);
+          if (fs === "played" && !played) return false;
+          if (fs === "upcoming" && played) return false;
+          if (fs === "window" && (played || !callOpen(m))) return false;
+          if (
+            q &&
+            !(
+              T[m[3]].n.toLowerCase().includes(q) ||
+              T[m[4]].n.toLowerCase().includes(q)
+            )
+          )
+            return false;
+          return true;
+        });
+        if (!list.length) {
+          $("#fixturelist").innerHTML =
+            `<div class="empty">No matches found — adjust the filters.</div>`;
+          return;
+        }
+        let html = "",
+          lastDate = "";
+        for (const m of list) {
+          if (m[1] !== lastDate) {
+            html += `<div class="dayhdr">${fmtDate(m[1])}</div>`;
+            lastDate = m[1];
+          }
+          html += matchCard(m);
+        }
+        $("#fixturelist").innerHTML = html;
+      }
 
-window.saveMatch = async id => {
-  const get = f => document.getElementById(id+"-"+f).value;
-  const h=get("h"), a=get("a");
-  const entry = { sc:get("sc"), yc:get("yc"), rc:get("rc"), inj:get("inj"), motm:get("motm"), pen:get("pen"), nt:get("nt"),
-                  fh:get("fh"), fa:get("fa"), poss:get("poss"), shots:get("shots") };
-  if(h!=="" && a!==""){ entry.h=+h; entry.a=+a; }
-  S.results[id] = entry;
-  const ok = await saveState();
-  document.getElementById(id+"-msg").textContent = ok ? "Saved ✓" : "Save failed — try again";
-  renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-  const el = document.getElementById(id); if(el) el.classList.add("open");
-};
-window.clearMatch = async id => {
-  delete S.results[id];
-  delete S.reported[id];
-  await saveState();
-  renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-};
-window.aiOne = async (id, kind) => {
-  const m = M.find(x=>x[0]===id);
-  const msg = document.getElementById(id+"-msg");
-  if(msg) msg.textContent = kind==="report" ? "Researching the match…" : "Re-analysing with latest info…";
-  try{
-    if(kind==="report"){ delete S.reported[id]; await fetchReport(m); }
-    else {
-      if(!revisable(m)){ if(msg) msg.textContent="Match already started or finished — call is locked."; return; }
-      await reviseCall(m);
-    }
-    await saveState();
-    renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-    const el = document.getElementById(id); if(el) el.classList.add("open");
-    const msg2 = document.getElementById(id+"-msg"); if(msg2) msg2.textContent = "Updated ✓";
-  }catch(e){
-    console.warn(e);
-    const msg2 = document.getElementById(id+"-msg");
-    if(msg2) msg2.textContent = "AI engine unavailable here — open the dashboard inside Claude, or fill in manually.";
-  }
-};
+      window.toggle = (id) => {
+        if (openSet.has(id)) openSet.delete(id);
+        else openSet.add(id);
+        renderFixtures();
+      };
 
-/* ============ GROUPS ============ */
-function buildTable(g, useReal){
-  const rows = {};
-  GROUPS[g].forEach(t=>rows[t]={t,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0});
-  M.filter(m=>m[2]===g).forEach(m=>{
-    let h,a;
-    if(useReal){ const r=res(m[0]); if(!r) return; h=+r.h; a=+r.a; }
-    else { h=m[6]; a=m[7]; }
-    const H=rows[m[3]], A=rows[m[4]];
-    H.p++;A.p++; H.gf+=h;H.ga+=a; A.gf+=a;A.ga+=h;
-    if(h>a){H.w++;A.l++;H.pts+=3} else if(h<a){A.w++;H.l++;A.pts+=3} else {H.d++;A.d++;H.pts++;A.pts++}
-  });
-  return Object.values(rows).sort((x,y)=> y.pts-x.pts || (y.gf-y.ga)-(x.gf-x.ga) || y.gf-x.gf || T[x.t].n.localeCompare(T[y.t].n));
-}
-function renderGroups(){
-  let html="";
-  for(const g of Object.keys(GROUPS)){
-    const pred = buildTable(g,false);
-    const pickPos = {}; pred.forEach((r,i)=>pickPos[r.t]=i+1);
-    const real = buildTable(g,true);
-    const anyPlayed = real.some(r=>r.p>0);
-    const table = anyPlayed ? real : pred.map(r=>({...r,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}));
-    html += `<div class="gcard"><h3>Group <span>${g}</span>${anyPlayed?"":' <span style="font-size:11px;color:var(--muted);letter-spacing:.1em">— no results yet, shown in predicted order</span>'}</h3>
+      window.saveNote = async (id) => {
+        const el = document.getElementById(id + "-un");
+        const prev = S.results[id] || {};
+        S.results[id] = { ...prev, un: el ? el.value : "" };
+        const ok = await saveState();
+        openSet.add(id);
+        renderHead();
+        renderFixtures();
+        renderGroups();
+        renderAccuracy();
+        const msg = document.getElementById(id + "-msg");
+        if (msg) msg.textContent = ok ? "Saved ✓" : "Save failed — try again";
+      };
+      window.aiOne = async (id, kind) => {
+        const m = M.find((x) => x[0] === id);
+        const msg = document.getElementById(id + "-msg");
+        if (msg)
+          msg.textContent =
+            kind === "report"
+              ? "Researching the match…"
+              : "Re-analysing with latest info…";
+        try {
+          if (kind === "report") {
+            delete S.reported[id];
+            await fetchReport(m);
+          } else {
+            if (!revisable(m)) {
+              if (msg)
+                msg.textContent =
+                  "Match already started or finished — call is locked.";
+              return;
+            }
+            await reviseCall(m);
+          }
+          await saveState();
+          openSet.add(id);
+          renderHead();
+          renderFixtures();
+          renderGroups();
+          renderAccuracy();
+          const msg2 = document.getElementById(id + "-msg");
+          if (msg2) msg2.textContent = "Updated ✓";
+        } catch (e) {
+          console.warn(e);
+          const msg2 = document.getElementById(id + "-msg");
+          if (msg2)
+            msg2.textContent =
+              "AI engine unavailable here — open the dashboard inside Claude and it runs automatically.";
+        }
+      };
+
+      /* ============ GROUPS ============ */
+      function buildTable(g, useReal) {
+        const rows = {};
+        GROUPS[g].forEach(
+          (t) =>
+            (rows[t] = { t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }),
+        );
+        M.filter((m) => m[2] === g).forEach((m) => {
+          let h, a;
+          if (useReal) {
+            const r = res(m[0]);
+            if (!r) return;
+            h = +r.h;
+            a = +r.a;
+          } else {
+            h = m[6];
+            a = m[7];
+          }
+          const H = rows[m[3]],
+            A = rows[m[4]];
+          H.p++;
+          A.p++;
+          H.gf += h;
+          H.ga += a;
+          A.gf += a;
+          A.ga += h;
+          if (h > a) {
+            H.w++;
+            A.l++;
+            H.pts += 3;
+          } else if (h < a) {
+            A.w++;
+            H.l++;
+            A.pts += 3;
+          } else {
+            H.d++;
+            A.d++;
+            H.pts++;
+            A.pts++;
+          }
+        });
+        return Object.values(rows).sort(
+          (x, y) =>
+            y.pts - x.pts ||
+            y.gf - y.ga - (x.gf - x.ga) ||
+            y.gf - x.gf ||
+            T[x.t].n.localeCompare(T[y.t].n),
+        );
+      }
+      function renderGroups() {
+        let html = "";
+        for (const g of Object.keys(GROUPS)) {
+          const pred = buildTable(g, false);
+          const pickPos = {};
+          pred.forEach((r, i) => (pickPos[r.t] = i + 1));
+          const real = buildTable(g, true);
+          const anyPlayed = real.some((r) => r.p > 0);
+          const table = anyPlayed
+            ? real
+            : pred.map((r) => ({
+                ...r,
+                p: 0,
+                w: 0,
+                d: 0,
+                l: 0,
+                gf: 0,
+                ga: 0,
+                pts: 0,
+              }));
+          html += `<div class="gcard"><h3>Group <span>${g}</span>${anyPlayed ? "" : ' <span style="font-size:11px;color:var(--muted);letter-spacing:.1em">— no results yet, shown in predicted order</span>'}</h3>
       <table><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr>`;
-    table.forEach(r=>{
-      html += `<tr><td class="t"><span class="flag">${T[r.t].f}</span>${T[r.t].n}<span class="pick">P${pickPos[r.t]}</span></td>
-        <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf-r.ga>0?"+":""}${r.gf-r.ga}</td><td><b>${r.pts}</b></td></tr>`;
-    });
-    html += `</table><div class="qline">My pick to advance: <b style="color:var(--chalk)">${T[pred[0].t].n}</b> &amp; <b style="color:var(--chalk)">${T[pred[1].t].n}</b> — ${T[pred[2].t].n} in the third-place lottery.</div></div>`;
-  }
-  $("#groupgrid").innerHTML = html;
-}
+          table.forEach((r) => {
+            html += `<tr><td class="t"><span class="flag">${T[r.t].f}</span>${T[r.t].n}<span class="pick">P${pickPos[r.t]}</span></td>
+        <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf - r.ga > 0 ? "+" : ""}${r.gf - r.ga}</td><td><b>${r.pts}</b></td></tr>`;
+          });
+          html += `</table><div class="qline">My pick to advance: <b style="color:var(--chalk)">${T[pred[0].t].n}</b> &amp; <b style="color:var(--chalk)">${T[pred[1].t].n}</b> — ${T[pred[2].t].n} in the third-place lottery.</div></div>`;
+        }
+        $("#groupgrid").innerHTML = html;
+      }
 
-/* ============ ACCURACY & LESSONS ============ */
-function renderAccuracy(){
-  const played = M.filter(m=>res(m[0]));
-  let html = "";
-  if(!played.length){
-    html = `<div class="empty">No results logged yet. The tournament kicks off 11 June — once you log full-time scores in the Fixtures tab, this page becomes my report card: outcome accuracy, goal-error, my biases, and what I'm correcting for the next round of calls.</div>`;
-  } else {
-    const ex = played.filter(m=>verdict(m)==="exact").length;
-    const oc = played.filter(m=>verdict(m)==="outcome").length;
-    const wr = played.filter(m=>verdict(m)==="wrong").length;
-    const accPct = Math.round(100*(ex+oc)/played.length);
-    const avgErr = (played.reduce((s,m)=>s+goalErr(m),0)/played.length).toFixed(2);
-    html += `<div class="acc-grid">
-      <div class="acc-card"><div class="num" style="color:var(--amber)">${accPct}%</div><div class="lbl">Outcome accuracy (${ex+oc}/${played.length})</div></div>
+      /* ============ ACCURACY & LESSONS ============ */
+      function renderAccuracy() {
+        const played = M.filter((m) => res(m[0]));
+        let html = "";
+        if (!played.length) {
+          html = `<div class="empty">No results logged yet. The tournament kicks off 11 June — once you log full-time scores in the Fixtures tab, this page becomes my report card: outcome accuracy, goal-error, my biases, and what I'm correcting for the next round of calls.</div>`;
+        } else {
+          const ex = played.filter((m) => verdict(m) === "exact").length;
+          const oc = played.filter((m) => verdict(m) === "outcome").length;
+          const wr = played.filter((m) => verdict(m) === "wrong").length;
+          const accPct = Math.round((100 * (ex + oc)) / played.length);
+          const avgErr = (
+            played.reduce((s, m) => s + goalErr(m), 0) / played.length
+          ).toFixed(2);
+          html += `<div class="acc-grid">
+      <div class="acc-card"><div class="num" style="color:var(--amber)">${accPct}%</div><div class="lbl">Outcome accuracy (${ex + oc}/${played.length})</div></div>
       <div class="acc-card"><div class="num" style="color:var(--hit)">${ex}</div><div class="lbl">Exact scorelines</div></div>
       <div class="acc-card"><div class="num" style="color:var(--miss)">${wr}</div><div class="lbl">Wrong calls</div></div>
       <div class="acc-card"><div class="num">${avgErr}</div><div class="lbl">Avg goal error / match</div></div>
     </div>`;
 
-    /* auto-lessons */
-    const lessons = [];
-    const goalBias = played.reduce((s,m)=>{ const r=res(m[0]); return s + (m[6]+m[7]) - (+r.h + +r.a); },0)/played.length;
-    if(goalBias > 0.4) lessons.push(["Goal calibration","I'm predicting "+goalBias.toFixed(1)+" more goals per match than reality. Matches are tighter than I expect — dial total goals down on the next round of calls."]);
-    else if(goalBias < -0.4) lessons.push(["Goal calibration","Matches are producing "+Math.abs(goalBias).toFixed(1)+" more goals per game than I called. I'm too conservative — open up the scorelines."]);
-    else lessons.push(["Goal calibration","Total-goals calibration is healthy ("+(goalBias>=0?"+":"")+goalBias.toFixed(1)+" per match). Keep the same baseline."]);
+          /* auto-lessons */
+          const lessons = [];
+          const goalBias =
+            played.reduce((s, m) => {
+              const r = res(m[0]);
+              return s + (m[6] + m[7]) - (+r.h + +r.a);
+            }, 0) / played.length;
+          if (goalBias > 0.4)
+            lessons.push([
+              "Goal calibration",
+              "I'm predicting " +
+                goalBias.toFixed(1) +
+                " more goals per match than reality. Matches are tighter than I expect — dial total goals down on the next round of calls.",
+            ]);
+          else if (goalBias < -0.4)
+            lessons.push([
+              "Goal calibration",
+              "Matches are producing " +
+                Math.abs(goalBias).toFixed(1) +
+                " more goals per game than I called. I'm too conservative — open up the scorelines.",
+            ]);
+          else
+            lessons.push([
+              "Goal calibration",
+              "Total-goals calibration is healthy (" +
+                (goalBias >= 0 ? "+" : "") +
+                goalBias.toFixed(1) +
+                " per match). Keep the same baseline.",
+            ]);
 
-    const favMatches = played.filter(m=>m[6]!==m[7]);
-    if(favMatches.length>=3){
-      const favLost = favMatches.filter(m=>{ const r=res(m[0]); return sign(m[6],m[7])!==sign(+r.h,+r.a); }).length;
-      const upsetRate = Math.round(100*favLost/favMatches.length);
-      if(upsetRate>=35) lessons.push(["Favourite bias","In "+upsetRate+"% of matches where I backed a winner, the other side took points. I'm over-trusting reputation — weight current form and fatigue more, ranking less."]);
-      else lessons.push(["Favourite bias","Upset rate is "+upsetRate+"% — my reads on favourites are holding. Reputation is still mostly earning its keep this tournament."]);
-    }
-    const drawCalls = played.filter(m=>m[6]===m[7]);
-    if(drawCalls.length>=2){
-      const drawHit = drawCalls.filter(m=>{const r=res(m[0]);return +r.h===+r.a;}).length;
-      lessons.push(["Draw calls", drawHit+" of "+drawCalls.length+" predicted draws actually finished level. "+(drawHit/drawCalls.length<0.4?"Draws are the hardest call — I should only predict them with strong style-clash evidence.":"The style-clash logic behind my draw calls is working.")]);
-    }
-    html += `<div class="section-h">What the data is telling me</div>`;
-    lessons.forEach(l=>{ html += `<div class="lesson"><span class="tag">${l[0]}</span>${l[1]}</div>`; });
+          const favMatches = played.filter((m) => m[6] !== m[7]);
+          if (favMatches.length >= 3) {
+            const favLost = favMatches.filter((m) => {
+              const r = res(m[0]);
+              return sign(m[6], m[7]) !== sign(+r.h, +r.a);
+            }).length;
+            const upsetRate = Math.round((100 * favLost) / favMatches.length);
+            if (upsetRate >= 35)
+              lessons.push([
+                "Favourite bias",
+                "In " +
+                  upsetRate +
+                  "% of matches where I backed a winner, the other side took points. I'm over-trusting reputation — weight current form and fatigue more, ranking less.",
+              ]);
+            else
+              lessons.push([
+                "Favourite bias",
+                "Upset rate is " +
+                  upsetRate +
+                  "% — my reads on favourites are holding. Reputation is still mostly earning its keep this tournament.",
+              ]);
+          }
+          const drawCalls = played.filter((m) => m[6] === m[7]);
+          if (drawCalls.length >= 2) {
+            const drawHit = drawCalls.filter((m) => {
+              const r = res(m[0]);
+              return +r.h === +r.a;
+            }).length;
+            lessons.push([
+              "Draw calls",
+              drawHit +
+                " of " +
+                drawCalls.length +
+                " predicted draws actually finished level. " +
+                (drawHit / drawCalls.length < 0.4
+                  ? "Draws are the hardest call — I should only predict them with strong style-clash evidence."
+                  : "The style-clash logic behind my draw calls is working."),
+            ]);
+          }
+          html += `<div class="section-h">What the data is telling me</div>`;
+          lessons.forEach((l) => {
+            html += `<div class="lesson"><span class="tag">${l[0]}</span>${l[1]}</div>`;
+          });
 
-    /* biggest misses */
-    const misses = played.filter(m=>verdict(m)==="wrong").sort((a,b)=>goalErr(b)-goalErr(a)).slice(0,6);
-    if(misses.length){
-      html += `<div class="section-h">Biggest misses — own them, learn from them</div>`;
-      misses.forEach(m=>{
-        const r=res(m[0]); const c=effCall(m);
-        html += `<div class="miss-row"><span>${T[m[3]].f} ${T[m[3]].n} ${r.h}–${r.a} ${T[m[4]].n} ${T[m[4]].f} <span style="color:var(--muted)">(I called ${c.h}–${c.a}${c.revised?" rev.":""})</span></span><span class="delta">±${goalErr(m)} goals</span></div>`;
-      });
-    }
-  }
-  html += `<div class="section-h">Analyst's notebook</div>
+          /* biggest misses */
+          const misses = played
+            .filter((m) => verdict(m) === "wrong")
+            .sort((a, b) => goalErr(b) - goalErr(a))
+            .slice(0, 6);
+          if (misses.length) {
+            html += `<div class="section-h">Biggest misses — own them, learn from them</div>`;
+            misses.forEach((m) => {
+              const r = res(m[0]);
+              const c = effCall(m);
+              html += `<div class="miss-row"><span>${T[m[3]].f} ${T[m[3]].n} ${r.h}–${r.a} ${T[m[4]].n} ${T[m[4]].f} <span style="color:var(--muted)">(I called ${c.h}–${c.a}${c.revised ? " rev." : ""})</span></span><span class="delta">±${goalErr(m)} goals</span></div>`;
+            });
+          }
+        }
+        html += `<div class="section-h">Analyst's notebook</div>
     <textarea class="notebook" id="notebook" placeholder="Running observations across the tournament — patterns, form lines, things to weight differently in the knockout predictions…">${esc(S.notebook)}</textarea>
     <div class="actions" style="margin-top:10px;display:flex;gap:10px;align-items:center">
       <button class="primary" onclick="saveNotebook()">Save notebook</button><span class="savedmsg" id="nb-msg"></span>
     </div>`;
-  $("#accbody").innerHTML = html;
-}
-window.saveNotebook = async () => {
-  S.notebook = $("#notebook").value;
-  const ok = await saveState();
-  $("#nb-msg").textContent = ok ? "Saved ✓" : "Save failed — try again";
-};
+        $("#accbody").innerHTML = html;
+      }
+      window.saveNotebook = async () => {
+        S.notebook = $("#notebook").value;
+        const ok = await saveState();
+        $("#nb-msg").textContent = ok ? "Saved ✓" : "Save failed — try again";
+      };
 
-/* ============ TABS / FILTERS / INIT ============ */
-document.querySelectorAll("nav button").forEach(b=>{
-  b.addEventListener("click",()=>{
-    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    ["fixtures","groups","accuracy"].forEach(t=>$("#tab-"+t).style.display = t===b.dataset.tab?"":"none");
-  });
-});
-$("#resetbtn").addEventListener("click", async ()=>{
-  if(!confirm("Clear all logged results, notes, revised calls and reports? Opening calls stay.")) return;
-  S = {results:{},calls:{},reported:{},notebook:""};
-  try{ await window.storage.delete(KEY); }catch(e){}
-  renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-});
-Object.keys(GROUPS).forEach(g=>{ const o=document.createElement("option"); o.value=g; o.textContent="Group "+g; $("#f-group").appendChild(o); });
-["f-group","f-status"].forEach(id=>$("#"+id).addEventListener("change",renderFixtures));
-$("#f-search").addEventListener("input",renderFixtures);
+      /* ============ TABS / FILTERS / INIT ============ */
+      document.querySelectorAll("nav button").forEach((b) => {
+        b.addEventListener("click", () => {
+          document
+            .querySelectorAll("nav button")
+            .forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+          ["fixtures", "groups", "accuracy"].forEach(
+            (t) =>
+              ($("#tab-" + t).style.display =
+                t === b.dataset.tab ? "" : "none"),
+          );
+        });
+      });
+      /* Export/import — carry the full dataset between environments (the Claude
+   preview and your own browser have SEPARATE storage; this is the bridge). */
+      $("#exportbtn").addEventListener("click", async () => {
+        const payload = JSON.stringify(
+          { ...S, exportedAt: new Date().toISOString() },
+          null,
+          1,
+        );
+        let done = false;
+        try {
+          const blob = new Blob([payload], { type: "application/json" });
+          const aEl = document.createElement("a");
+          aEl.href = URL.createObjectURL(blob);
+          aEl.download = "wc2026-analyst-data.json";
+          document.body.appendChild(aEl);
+          aEl.click();
+          aEl.remove();
+          done = true;
+        } catch (e) {}
+        try {
+          await navigator.clipboard.writeText(payload);
+          done = true;
+          alert(
+            "Data geëxporteerd" +
+              (done ? " (download + klembord)" : "") +
+              ". Importeer dit bestand in de andere omgeving via ⇧ Import data.",
+          );
+        } catch (e) {
+          if (done)
+            alert(
+              "Databestand gedownload. Importeer het in de andere omgeving via ⇧ Import data.",
+            );
+          else alert("Export mislukt in deze omgeving.");
+        }
+      });
+      $("#importbtn").addEventListener("click", () => $("#importfile").click());
+      $("#importfile").addEventListener("change", async (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        try {
+          const txt = await f.text();
+          const inc = JSON.parse(txt);
+          if (!inc || typeof inc !== "object" || !inc.results)
+            throw new Error("geen geldig exportbestand");
+          /* merge: imported data wins on results/calls/reports; notebook concatenates if different */
+          S.results = { ...S.results, ...inc.results };
+          S.calls = { ...S.calls, ...(inc.calls || {}) };
+          S.reported = { ...S.reported, ...(inc.reported || {}) };
+          if (inc.notebook && inc.notebook !== S.notebook)
+            S.notebook = S.notebook
+              ? S.notebook + "\n---\n" + inc.notebook
+              : inc.notebook;
+          if (inc.lastFinalAt)
+            S.lastFinalAt = Math.max(S.lastFinalAt || 0, inc.lastFinalAt);
+          await saveState();
+          renderHead();
+          renderFixtures();
+          renderGroups();
+          renderAccuracy();
+          alert("Data geïmporteerd en samengevoegd ✓");
+        } catch (e) {
+          alert("Import mislukt: " + e.message);
+        }
+        ev.target.value = "";
+      });
 
-(async function init(){
-  await loadState();
-  renderHead(); renderFixtures(); renderGroups(); renderAccuracy();
-  $("#tab-accuracy").style.display="none"; $("#tab-groups").style.display="none";
-  $("#loading").remove();
-  $("#syncbtn").addEventListener("click",()=>syncScores(true));
-  $("#aibtn").addEventListener("click",runEngine);
-  await syncScores(false);                 // sync on open
-  setInterval(()=>syncScores(false), 5*60*1000); // and every 5 minutes
-  const unreported = M.some(m=>res(m[0]) && !S.reported[m[0]]);
-  if(unreported || !S.lastEngine || Date.now()-S.lastEngine > 12*60*60*1000){
-    setTimeout(runEngine, 2000);           // auto: reports for new finals + fresh call revisions
-  }
-})();
-</script>
-</body>
+      $("#resetbtn").addEventListener("click", async () => {
+        if (
+          !confirm(
+            "Clear all logged results, notes, revised calls and reports? Opening calls stay.",
+          )
+        )
+          return;
+        S = { results: {}, calls: {}, reported: {}, notebook: "" };
+        try {
+          await store.del(KEY);
+        } catch (e) {}
+        renderHead();
+        renderFixtures();
+        renderGroups();
+        renderAccuracy();
+      });
+      Object.keys(GROUPS).forEach((g) => {
+        const o = document.createElement("option");
+        o.value = g;
+        o.textContent = "Group " + g;
+        $("#f-group").appendChild(o);
+      });
+      ["f-group", "f-status"].forEach((id) =>
+        $("#" + id).addEventListener("change", renderFixtures),
+      );
+      $("#f-search").addEventListener("input", renderFixtures);
+
+      (async function init() {
+        await loadState();
+        renderHead();
+        renderFixtures();
+        renderGroups();
+        renderAccuracy();
+        $("#tab-accuracy").style.display = "none";
+        $("#tab-groups").style.display = "none";
+        $("#loading").remove();
+        $("#syncbtn").addEventListener("click", () => syncScores(true));
+        $("#aibtn").addEventListener("click", runEngine);
+        await syncScores(false); // sync on open
+        setInterval(() => syncScores(false), 5 * 60 * 1000); // and every 5 minutes
+        const unreported = M.some((m) => res(m[0]) && !S.reported[m[0]]);
+        if (
+          unreported ||
+          !S.lastEngine ||
+          Date.now() - S.lastEngine > 12 * 60 * 60 * 1000
+        ) {
+          setTimeout(runEngine, 2000); // auto: reports for new finals + fresh call revisions
+        }
+      })();
+    </script>
+  </body>
 </html>
