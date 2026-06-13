@@ -314,6 +314,30 @@
       .syncbar b {
         color: var(--chalk);
       }
+      .syncstamp {
+        font-family: var(--display);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        padding: 3px 9px;
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      .syncstamp.fresh {
+        color: var(--hit);
+        border-color: rgba(65, 201, 138, 0.4);
+      }
+      .syncstamp.stale {
+        color: var(--amber);
+        border-color: rgba(245, 184, 61, 0.4);
+      }
+      .syncstamp.fresh::before,
+      .syncstamp.stale::before {
+        content: "●";
+        margin-right: 5px;
+        font-size: 9px;
+        vertical-align: 1px;
+      }
       .live-pill {
         font-family: var(--display);
         font-size: 10px;
@@ -519,6 +543,60 @@
         display: block;
         height: 100%;
         background: var(--amber);
+      }
+      .cmptable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .cmptable th {
+        font-family: var(--display);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-align: center;
+        padding: 3px 4px;
+        border-bottom: 1px solid var(--line);
+        text-transform: none;
+      }
+      .cmptable th:first-child {
+        text-align: left;
+      }
+      .cmptable td {
+        text-align: center;
+        padding: 4px;
+        border-bottom: 1px solid rgba(34, 50, 78, 0.4);
+        font-variant-numeric: tabular-nums;
+      }
+      .cmptable td.cl {
+        text-align: left;
+        font-family: var(--display);
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .cmptable tr:last-child td {
+        border-bottom: none;
+      }
+      .edgepos {
+        color: var(--hit);
+        font-weight: 600;
+      }
+      .edgeneg {
+        color: var(--miss);
+        font-weight: 600;
+      }
+      .edgeneu {
+        color: var(--muted);
+      }
+      .edgekey {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 8px;
+        padding-left: 10px;
+        border-left: 2px solid var(--line);
       }
       .reason.locked {
         border-left-color: var(--line);
@@ -913,14 +991,12 @@
           >
         </div>
         <div class="syncbar">
-          <button class="ghost" id="aibtn">✦ Run analyst engine</button>
-          <span id="aimsg"
-            >After every final whistle I research the match (formations,
-            possession, shots, scorers, cards, injuries, standout players) and
-            re-make every open call with the full analyst template: squad &amp;
-            availability check, form curves, tactical matchup, win/draw/win
-            probabilities, most likely scorelines and market calls with
-            confidence. No number is fixed until kickoff.</span
+          <button class="ghost" id="oddsbtn">⟳ Sync odds</button>
+          <span class="syncstamp" id="oddsstamp">Odds nog niet gesynct</span>
+          <span id="oddsmsg"
+            >Markt-ijkpunt: vergelijkt mijn kansberekening met vig-vrije
+            bookmaker-odds. Afwijking ≥6 punten = value-signaal of blinde
+            vlek.</span
           >
         </div>
         <div class="filters">
@@ -2595,6 +2671,192 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
         );
       }
 
+      /* ============ ODDS BENCHMARK LAYER (The Odds API) ============
+   Role: the market is the EXAMINER, never an input. We fetch h2h odds, strip
+   the bookmaker margin (vig) to get fair implied probabilities, and compare
+   them to my own model. Big gaps = value candidate OR my blind spot.        */
+      const ODDS_SPORT = "soccer_fifa_world_cup";
+      const ODDS_KEY_DEFAULT = "d7f014a99a0dc73e9be5d527ef02100b"; // baked-in default
+      const oddsKeyStore = "wc2026-oddskey";
+      function getOddsKey() {
+        try {
+          return localStorage.getItem(oddsKeyStore) || ODDS_KEY_DEFAULT;
+        } catch (e) {
+          return ODDS_KEY_DEFAULT;
+        }
+      }
+      function setOddsKey(k) {
+        try {
+          localStorage.setItem(oddsKeyStore, k);
+        } catch (e) {}
+      }
+
+      function nrm(s) {
+        return (s || "")
+          .toLowerCase()
+          .replace(/ç/g, "c")
+          .replace(/ü/g, "u")
+          .replace(/[^a-z ]/g, "")
+          .trim();
+      }
+      const ODDS_ALIASES = {
+        "korea republic": "south korea",
+        "ir iran": "iran",
+        "ivory coast": "cote divoire",
+        usa: "united states",
+        "czech republic": "czechia",
+        turkey: "turkiye",
+        "bosnia and herzegovina": "bosnia herz",
+        "bosnia herzegovina": "bosnia herz",
+        "cape verde": "cabo verde",
+        "congo dr": "dr congo",
+      };
+      function canon(s) {
+        const n = nrm(s);
+        return ODDS_ALIASES[n] || n;
+      }
+      function teamMatch(apiName, code) {
+        const a = canon(apiName),
+          full = canon(T[code].n);
+        return (
+          a === full ||
+          a.includes(full) ||
+          full.includes(a) ||
+          canon(T[code].n.split(/[ -]/)[0]) === a
+        );
+      }
+
+      function renderOddsStamp() {
+        const el = $("#oddsstamp");
+        if (!el) return;
+        if (!S.oddsAt) {
+          el.textContent = "Odds nog niet gesynct";
+          el.className = "syncstamp";
+          return;
+        }
+        const mins = Math.round((Date.now() - S.oddsAt) / 60000);
+        const rel =
+          mins < 1
+            ? "zojuist"
+            : mins < 60
+              ? `${mins} min geleden`
+              : `${Math.round(mins / 60)} u geleden`;
+        const fresh = mins <= 35;
+        el.innerHTML = `Laatst gesynct: <b>${S.oddsAtStr}</b> (${rel})`;
+        el.className = "syncstamp " + (fresh ? "fresh" : "stale");
+        el.title = fresh
+          ? "Odds zijn actueel"
+          : "Odds zijn verouderd — klik ⟳ Sync odds";
+      }
+
+      async function syncOdds(manual) {
+        const key = getOddsKey();
+        const bar = $("#oddsmsg");
+        if (manual && bar) {
+          bar.textContent = "Odds ophalen…";
+        }
+        if (!manual && S.oddsAt && Date.now() - S.oddsAt < 30 * 60 * 1000) {
+          if (bar)
+            bar.innerHTML = `Odds uit cache · laatst ${S.oddsAtStr || ""} · ${Object.keys(S.odds || {}).length} wedstrijden gekoppeld. Ververst elke 30 min.`;
+          return;
+        }
+        if (bar) bar.textContent = "Odds ophalen…";
+        try {
+          const url = `https://api.the-odds-api.com/v4/sports/${ODDS_SPORT}/odds?apiKey=${encodeURIComponent(key)}&regions=eu,uk&markets=h2h&oddsFormat=decimal&dateFormat=iso`;
+          const resp = await fetch(url);
+          if (resp.status === 401) {
+            if (bar)
+              bar.innerHTML = `<span style="color:var(--miss)">Key geweigerd (401)</span> — controleer de key of genereer een nieuwe op the-odds-api.com.`;
+            return;
+          }
+          if (resp.status === 429) {
+            if (bar)
+              bar.innerHTML = `<span style="color:var(--miss)">Quota op (429)</span> — gratis tier verbruikt; odds blijven uit cache.`;
+            return;
+          }
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          const remaining = resp.headers.get("x-requests-remaining");
+          const events = await resp.json();
+          const odds = {};
+          for (const m of M) {
+            const [id, , , h, a] = m;
+            const ev = events.find(
+              (e) =>
+                (teamMatch(e.home_team, h) && teamMatch(e.away_team, a)) ||
+                (teamMatch(e.home_team, a) && teamMatch(e.away_team, h)),
+            );
+            if (!ev || !ev.bookmakers || !ev.bookmakers.length) continue;
+            const swapped = teamMatch(ev.home_team, a);
+            const ph = [],
+              pd = [],
+              pa = [];
+            for (const bk of ev.bookmakers) {
+              const mk = (bk.markets || []).find((x) => x.key === "h2h");
+              if (!mk) continue;
+              let oh, od, oa;
+              for (const o of mk.outcomes) {
+                if (/draw/i.test(o.name)) od = o.price;
+                else if (teamMatch(o.name, swapped ? a : h)) oh = o.price;
+                else if (teamMatch(o.name, swapped ? h : a)) oa = o.price;
+              }
+              if (oh && od && oa) {
+                ph.push(oh);
+                pd.push(od);
+                pa.push(oa);
+              }
+            }
+            if (!ph.length) continue;
+            const med = (arr) => {
+              const s = [...arr].sort((x, y) => x - y);
+              const i = s.length >> 1;
+              return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2;
+            };
+            let dh = med(ph),
+              dd = med(pd),
+              da = med(pa);
+            if (swapped) {
+              const t = dh;
+              dh = da;
+              da = t;
+            }
+            const ih = 1 / dh,
+              idr = 1 / dd,
+              ia = 1 / da,
+              tot = ih + idr + ia;
+            odds[id] = {
+              h: Math.round((100 * ih) / tot),
+              d: Math.round((100 * idr) / tot),
+              a: Math.round((100 * ia) / tot),
+              dh: +dh.toFixed(2),
+              dd: +dd.toFixed(2),
+              da: +da.toFixed(2),
+              books: ph.length,
+            };
+          }
+          S.odds = odds;
+          S.oddsAt = Date.now();
+          S.oddsAtStr = new Date().toLocaleString("nl-NL", {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          await saveState();
+          renderOddsStamp();
+          if (bar)
+            bar.innerHTML = `Marktodds bijgewerkt · ${Object.keys(odds).length} wedstrijden gekoppeld${remaining ? ` · ${remaining} requests over` : ""}.`;
+          renderFixtures();
+        } catch (e) {
+          console.warn("odds sync failed", e);
+          const sandboxed = e instanceof TypeError; // fetch blocked (CORS/network) throws TypeError
+          if (bar) {
+            bar.innerHTML = sandboxed
+              ? `<span style="color:var(--miss)">Odds geblokkeerd in deze omgeving.</span> De preview hier in Claude staat geen directe verbinding naar bookmakers toe. <b>Download dit bestand en open het lokaal in je browser</b> — dan werkt de odds-sync direct. ${Object.keys(S.odds || {}).length ? "(Cache wordt getoond.)" : ""}`
+              : `<span style="color:var(--miss)">Odds-sync mislukt:</span> ${esc(e.message)}. Probeer opnieuw, of open het bestand lokaal.`;
+          }
+        }
+      }
+
       /* ============ HEADER STATS ============ */
       function renderHead() {
         const played = M.filter((m) => res(m[0]));
@@ -2620,16 +2882,57 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
       const openSet =
         new Set(); /* which match panels are expanded — survives re-renders */
 
+      function valueNote(p, o, h, a) {
+        const diffs = [
+          ["thuiswinst " + T[h].n, p.h - o.h],
+          ["gelijkspel", p.d - o.d],
+          ["uitwinst " + T[a].n, p.a - o.a],
+        ];
+        const best = diffs.slice().sort((x, y) => y[1] - x[1])[0];
+        const worst = diffs.slice().sort((x, y) => x[1] - y[1])[0];
+        let parts = [];
+        if (best[1] >= 6)
+          parts.push(
+            `<b style="color:var(--hit)">Value-kandidaat:</b> mijn model geeft ${best[0]} ${best[1]} punten hoger dan de markt — als ik gelijk heb, zit hier waarde.`,
+          );
+        if (worst[1] <= -6)
+          parts.push(
+            `<b style="color:var(--miss)">Blinde vlek?</b> de markt prijst ${worst[0]} ${Math.abs(worst[1])} punten hoger dan ik — wat weet de markt dat ik mis?`,
+          );
+        if (!parts.length)
+          parts.push(
+            `Model en markt liggen dicht bij elkaar (geen afwijking ≥6 punten) — geen duidelijk value-signaal, mijn inschatting wordt bevestigd.`,
+          );
+        return parts.join(" ");
+      }
+
       function analysisBlock(id, h, a) {
         const c = S.calls[id];
         if (!c || !c.probs) return "";
         const p = c.probs;
+        const o = (S.odds || {})[id];
         let html = `<div class="anablock">
-    <div class="anahdr">Kansberekening</div>
+    <div class="anahdr">Kansberekening <span class="mknote">— mijn model</span></div>
     <div class="probbar">
       <div class="ph" style="width:${p.h}%"></div><div class="pd" style="width:${p.d}%"></div><div class="pa" style="width:${p.a}%"></div>
     </div>
     <div class="probnum"><span>${T[h].f} ${p.h}%</span><span>gelijk ${p.d}%</span><span>${p.a}% ${T[a].f}</span></div>`;
+        if (o) {
+          const edge = (mine, mkt) => {
+            const d = mine - mkt;
+            const cl = d >= 6 ? "edgepos" : d <= -6 ? "edgeneg" : "edgeneu";
+            return `<span class="${cl}">${d >= 0 ? "+" : ""}${d}</span>`;
+          };
+          html += `<div class="anahdr" style="margin-top:11px">Markt-ijkpunt <span class="mknote">— ${o.books} bookmakers, vig verwijderd · afwijking = mijn % − markt</span></div>
+      <table class="cmptable">
+        <tr><th></th><th>${T[h].f} ${T[h].n}</th><th>Gelijk</th><th>${T[a].f} ${T[a].n}</th></tr>
+        <tr><td class="cl">Mijn model</td><td>${p.h}%</td><td>${p.d}%</td><td>${p.a}%</td></tr>
+        <tr><td class="cl">Markt (fair)</td><td>${o.h}%</td><td>${o.d}%</td><td>${o.a}%</td></tr>
+        <tr><td class="cl">Afwijking</td><td>${edge(p.h, o.h)}</td><td>${edge(p.d, o.d)}</td><td>${edge(p.a, o.a)}</td></tr>
+        <tr><td class="cl">Decimale odds</td><td>${o.dh}</td><td>${o.dd}</td><td>${o.da}</td></tr>
+      </table>
+      <div class="edgekey">${valueNote(p, o, h, a)}</div>`;
+        }
         if (c.top3 && c.top3.length) {
           html += `<div class="anahdr" style="margin-top:10px">Meest waarschijnlijke uitslagen</div>
       <div class="chips">${c.top3.map((s) => `<span class="chip">${esc(s)}</span>`).join("")}</div>`;
@@ -3153,8 +3456,13 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
         $("#loading").remove();
         $("#syncbtn").addEventListener("click", () => syncScores(true));
         $("#aibtn").addEventListener("click", runEngine);
+        $("#oddsbtn").addEventListener("click", () => syncOdds(true));
+        renderOddsStamp();
+        setInterval(renderOddsStamp, 60 * 1000); // keep "x min geleden" current
         await syncScores(false); // sync on open
         setInterval(() => syncScores(false), 5 * 60 * 1000); // and every 5 minutes
+        syncOdds(false); // odds benchmark on open
+        setInterval(() => syncOdds(false), 30 * 60 * 1000); // odds every 30 min
         const unreported = M.some((m) => res(m[0]) && !S.reported[m[0]]);
         if (
           unreported ||
