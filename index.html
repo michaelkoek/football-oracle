@@ -815,6 +815,55 @@
         color: var(--muted);
         margin-top: 8px;
       }
+      .simblock {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+      .simhdr {
+        font-family: var(--display);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 6px;
+      }
+      .simtable {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      .simtable th {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: right;
+        font-weight: 500;
+        padding: 2px 6px;
+      }
+      .simtable th:first-child {
+        text-align: left;
+      }
+      .simtable td {
+        font-size: 12px;
+        padding: 3px 6px;
+        text-align: right;
+        border-top: 1px solid var(--line);
+      }
+      .simtable td.t {
+        text-align: left;
+        color: var(--chalk);
+      }
+      .simtable .flag {
+        margin-right: 6px;
+      }
+      .simvr {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.6;
+      }
 
       /* ---------- accuracy ---------- */
       .acc-grid {
@@ -985,6 +1034,7 @@
       <div id="tab-fixtures">
         <div class="syncbar">
           <button class="ghost" id="syncbtn">⟳ Sync scores now</button>
+          <button class="ghost" id="aibtn">✦ Run analyst engine</button>
           <span id="syncmsg"
             >Scores auto-sync from the official FIFA feed every 5 minutes while
             this page is open.</span
@@ -2153,6 +2203,8 @@
           S.calls = {}; /* mid -> {h,a,reason,at}  — live revised calls */
         if (!S.reported)
           S.reported = {}; /* mid -> true once AI match report stored */
+        if (!S.teamStats)
+          S.teamStats = {}; /* code -> advanced dossier {…, ts} (STAP 1) */
         if (typeof S.notebook !== "string") S.notebook = "";
         applySeed(); /* baked-in verified data fills any gaps */
       }
@@ -2474,6 +2526,33 @@ Use empty strings when a detail can't be verified. Be factual.`,
         return true;
       }
 
+      /* STAP 1 — compact advanced team dossier via web research, cached 24h. */
+      async function fetchTeamStats(code) {
+        const out = await askClaude(
+          `Je bent een voetbal-datascout. Zoek op het web de meest recente cijfers voor het nationale elftal van ${T[code].n} richting/op het WK 2026. Antwoord met UITSLUITEND een JSON-object, geen markdown:
+{"coach":"<bondscoach>","form":"<laatste 5: bv. W-W-D-L-W>","gf":"<gem. doelpunten voor>","ga":"<gem. tegen>","cs":"<clean sheets laatste 5>","xg":"<xG per wedstrijd>","xga":"<xGA per wedstrijd>","shots":"<schoten per wedstrijd>","poss":"<gem. balbezit %>","pass":"<passnauwkeurigheid %>","press":"<pressing: hoog/middel/laag>","system":"<basissysteem bv. 4-3-3>","curve":"<stijgend/stabiel/dalend>","keyOut":"<belangrijkste afwezigen/blessures/schorsingen of leeg>"}
+Gebruik lege strings wanneer iets niet te verifiëren is. Wees feitelijk.`,
+        );
+        out.ts = Date.now();
+        S.teamStats[code] = out;
+        return out;
+      }
+
+      function teamStatLine(code) {
+        const s = (S.teamStats || {})[code];
+        if (!s) return "";
+        const bits = [];
+        if (s.coach) bits.push(`coach ${s.coach}`);
+        if (s.system) bits.push(`systeem ${s.system}`);
+        if (s.form) bits.push(`vorm ${s.form}`);
+        if (s.curve) bits.push(`curve ${s.curve}`);
+        if (s.xg || s.xga) bits.push(`xG ${s.xg || "?"} / xGA ${s.xga || "?"}`);
+        if (s.poss) bits.push(`balbezit ${s.poss}`);
+        if (s.press) bits.push(`pressing ${s.press}`);
+        if (s.keyOut) bits.push(`afwezig: ${s.keyOut}`);
+        return bits.length ? `Actuele cijfers ${T[code].n}: ${bits.join(", ")}.` : "";
+      }
+
       async function reviseCall(m) {
         const [id, date, g, h, a, venue] = m;
         const cur = effCall(m);
@@ -2483,8 +2562,8 @@ Use empty strings when a detail can't be verified. Be factual.`,
 Huidige call: ${T[h].n} ${cur.h}-${cur.a} ${T[a].n}. Oorspronkelijke rationale: ${m[8]}
 
 Toernooidossiers tot nu toe (uitslagen, formaties, balbezit, schoten, kaarten, blessures, uitblinkers, notities) —
-${T[h].n}:\n${teamDossier(h)}\n
-${T[a].n}:\n${teamDossier(a)}
+${T[h].n}:\n${teamDossier(h)}\n${teamStatLine(h)}\n
+${T[a].n}:\n${teamDossier(a)}\n${teamStatLine(a)}
 
 METHODE — doorloop per team de checklist via webresearch (gebruik uitsluitend de meest recente informatie):
 1. Selectie & beschikbaarheid: bondscoach, verwachte basiself, sterspelers, blessures, schorsingen (gele kaarten!), twijfelgevallen.
@@ -2497,8 +2576,8 @@ Antwoord met UITSLUITEND een JSON-object, geen markdown:
 {"h":<voorspelde goals ${T[h].n}>,"a":<voorspelde goals ${T[a].n}>,
 "probs":{"h":<winstkans ${T[h].n} %>,"d":<gelijkspel %>,"a":<winstkans ${T[a].n} %>},
 "top3":["2-1 (12%)","1-1 (11%)","1-0 (10%)"],
-"markets":[{"m":"1X2","p":"<keuze>","c":<confidence 0-100>},{"m":"Dubbele kans","p":"<1X/12/X2>","c":<c>},{"m":"BTTS","p":"<Ja/Nee>","c":<c>},{"m":"O/U 2.5","p":"<Over/Onder>","c":<c>},{"m":"O/U 3.5","p":"<Over/Onder>","c":<c>},{"m":"Aziatisch handicap","p":"<bv. ${T[h].n} -1>","c":<c>}],
-"reason":"2-4 zinnen in het Nederlands: de doorslaggevende factoren uit de vergelijking (blessures, tactische matchup, vorm, inzet)"}
+"markets":[{"m":"1X2","p":"<keuze>","c":<confidence 0-100>},{"m":"Dubbele kans","p":"<1X/12/X2>","c":<c>},{"m":"BTTS","p":"<Ja/Nee>","c":<c>},{"m":"O/U 2.5","p":"<Over/Onder>","c":<c>},{"m":"O/U 3.5","p":"<Over/Onder>","c":<c>},{"m":"Aziatisch handicap","p":"<bv. ${T[h].n} -1>","c":<c>},{"m":"Correct Score","p":"<bv. 2-1>","c":<c>},{"m":"Eerste doelpunt","p":"<${T[h].n}/${T[a].n}/Geen>","c":<c>},{"m":"Ruststand","p":"<1/X/2>","c":<c>},{"m":"Corners","p":"<bv. Over 9.5>","c":<c>},{"m":"Kaarten","p":"<bv. Over 3.5>","c":<c>}],
+"reason":"2-3 zinnen in het Nederlands: de doorslaggevende factoren uit de vergelijking (blessures, tactische matchup, vorm, inzet)"}
 probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijziging rechtvaardigt.`,
         );
         if (typeof out.h !== "number" || typeof out.a !== "number")
@@ -2511,7 +2590,7 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
           probs:
             out.probs && typeof out.probs.h === "number" ? out.probs : null,
           top3: Array.isArray(out.top3) ? out.top3.slice(0, 3) : null,
-          markets: Array.isArray(out.markets) ? out.markets.slice(0, 8) : null,
+          markets: Array.isArray(out.markets) ? out.markets.slice(0, 12) : null,
           ts: Date.now(),
           at: new Date().toISOString().slice(0, 16).replace("T", " "),
         };
@@ -2558,6 +2637,28 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
             engineBusy = false;
             return;
           }
+          /* STAP 1 pre-pass: refresh advanced dossiers (24h cache) for the
+             teams involved in calls we're about to re-analyse. */
+          const statFresh = (code) => {
+            const s = (S.teamStats || {})[code];
+            return s && s.ts && Date.now() - s.ts < 24 * 60 * 60 * 1000;
+          };
+          const teamsNeedStats = [
+            ...new Set(needRevise.flatMap((m) => [m[3], m[4]])),
+          ].filter((c) => !statFresh(c));
+          let sdone = 0;
+          for (const code of teamsNeedStats) {
+            set(
+              `Dossier ${++sdone}/${teamsNeedStats.length}: ${T[code].n}…`,
+            );
+            try {
+              await fetchTeamStats(code);
+              await saveState();
+            } catch (e) {
+              console.warn("teamStats failed", code, e);
+            }
+          }
+
           let done = 0,
             changedCalls = 0;
           const total = needReport.length + needRevise.length;
@@ -2906,6 +3007,23 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
         return parts.join(" ");
       }
 
+      /* Value bets — surface high-confidence market picks (≥70) as candidates,
+         independent of synced bookmaker odds (which cover 1X2 only). */
+      function valueBets(c) {
+        if (!c || !Array.isArray(c.markets)) return "";
+        const hot = c.markets
+          .filter((mk) => (+mk.c || 0) >= 70)
+          .sort((x, y) => (+y.c || 0) - (+x.c || 0));
+        if (!hot.length) return "";
+        return `<div class="anahdr" style="margin-top:10px">Value‑kandidaten <span class="mknote">— hoogste modelvertrouwen; toets zelf tegen de odds</span></div>
+      <div class="chips">${hot
+        .map(
+          (mk) =>
+            `<span class="chip"><b style="color:var(--hit)">${esc(mk.m)}:</b> ${esc(mk.p)} · ${Math.round(+mk.c || 0)}%</span>`,
+        )
+        .join("")}</div>`;
+      }
+
       function analysisBlock(id, h, a) {
         const c = S.calls[id];
         if (!c || !c.probs) return "";
@@ -2947,6 +3065,7 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
         .join("")}
       </table>`;
         }
+        html += valueBets(c);
         return html + `</div>`;
       }
 
@@ -3137,6 +3256,80 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
       };
 
       /* ============ GROUPS ============ */
+      /* Knuth Poisson sampler */
+      function poisson(lambda) {
+        const L = Math.exp(-Math.max(0.05, lambda));
+        let k = 0,
+          p = 1;
+        do {
+          k++;
+          p *= Math.random();
+        } while (p > L);
+        return k - 1;
+      }
+
+      /* STAP 3 — Monte Carlo group simulation from model scorelines/probs.
+         Played matches use their real result; upcoming ones draw goals via
+         Poisson(λ = predicted score). Best-third route ≈ 8/12 → weight 0.667. */
+      function simulateGroup(g, N = 10000) {
+        const games = M.filter((m) => m[2] === g);
+        const teams = GROUPS[g];
+        const acc = {};
+        teams.forEach(
+          (t) => (acc[t] = { win: 0, qual: 0, elim: 0 }),
+        );
+        const THIRD_W = 0.667;
+        for (let n = 0; n < N; n++) {
+          const row = {};
+          teams.forEach((t) => (row[t] = { pts: 0, gd: 0, gf: 0 }));
+          for (const m of games) {
+            const r = res(m[0]);
+            let h, a;
+            if (r) {
+              h = +r.h;
+              a = +r.a;
+            } else {
+              const c = effCall(m);
+              h = poisson(c.h);
+              a = poisson(c.a);
+            }
+            const H = row[m[3]],
+              A = row[m[4]];
+            H.gf += h;
+            H.gd += h - a;
+            A.gf += a;
+            A.gd += a - h;
+            if (h > a) H.pts += 3;
+            else if (h < a) A.pts += 3;
+            else {
+              H.pts++;
+              A.pts++;
+            }
+          }
+          const order = teams.slice().sort(
+            (x, y) =>
+              row[y].pts - row[x].pts ||
+              row[y].gd - row[x].gd ||
+              row[y].gf - row[x].gf ||
+              Math.random() - 0.5,
+          );
+          acc[order[0]].win++;
+          acc[order[0]].qual++;
+          acc[order[1]].qual++;
+          acc[order[2]].qual += THIRD_W;
+        }
+        const out = {};
+        teams.forEach((t) => {
+          const q = (100 * acc[t].qual) / N;
+          out[t] = {
+            win: Math.round((100 * acc[t].win) / N),
+            qual: Math.round(q),
+            elim: Math.round(100 - q),
+          };
+        });
+        return out;
+      }
+
       function buildTable(g, useReal) {
         const rows = {};
         GROUPS[g].forEach(
@@ -3211,7 +3404,43 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
             html += `<tr><td class="t"><span class="flag">${T[r.t].f}</span>${T[r.t].n}<span class="pick">P${pickPos[r.t]}</span></td>
         <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf - r.ga > 0 ? "+" : ""}${r.gf - r.ga}</td><td><b>${r.pts}</b></td></tr>`;
           });
-          html += `</table><div class="qline">My pick to advance: <b style="color:var(--chalk)">${T[pred[0].t].n}</b> &amp; <b style="color:var(--chalk)">${T[pred[1].t].n}</b> — ${T[pred[2].t].n} in the third-place lottery.</div></div>`;
+          html += `</table><div class="qline">My pick to advance: <b style="color:var(--chalk)">${T[pred[0].t].n}</b> &amp; <b style="color:var(--chalk)">${T[pred[1].t].n}</b> — ${T[pred[2].t].n} in the third-place lottery.</div>`;
+
+          /* STAP 3 — simulated qualification odds + surprise read */
+          const sim = simulateGroup(g);
+          const top2 = [pred[0].t, pred[1].t];
+          html += `<div class="simblock"><div class="simhdr">Simulatie <span class="mknote">— 10.000 runs op mijn model</span></div>
+      <table class="simtable"><tr><th>Team</th><th>Groepswinst</th><th>Kwalificatie</th><th>Uitschakeling</th></tr>`;
+          pred.forEach((r) => {
+            const s = sim[r.t];
+            html += `<tr><td class="t"><span class="flag">${T[r.t].f}</span>${T[r.t].n}</td>
+        <td>${s.win}%</td><td style="color:var(--hit)">${s.qual}%</td><td style="color:var(--muted)">${s.elim}%</td></tr>`;
+          });
+          html += `</table>`;
+
+          /* Verrassingsanalyse */
+          const byWin = pred.slice().sort((a, b) => sim[b.t].win - sim[a.t].win);
+          const outsiders = pred.filter((r) => !top2.includes(r.t));
+          const surpriseQ = outsiders
+            .slice()
+            .sort((a, b) => sim[b.t].qual - sim[a.t].qual)[0];
+          const overrated = top2
+            .map((t) => ({ t, q: sim[t].qual }))
+            .sort((a, b) => a.q - b.q)[0];
+          const underrated = outsiders.find((r) => sim[r.t].qual >= 35);
+          let vr = [
+            `<b>Grootste kanshebber groepswinst:</b> ${T[byWin[0].t].n} (${sim[byWin[0].t].win}%).`,
+            `<b>Grootste verrassingskanshebber:</b> ${T[surpriseQ.t].n} — ${sim[surpriseQ.t].qual}% kwalificatiekans buiten mijn top‑2.`,
+          ];
+          if (underrated)
+            vr.push(
+              `<b style="color:var(--hit)">Onderschat:</b> ${T[underrated.t].n} haalt ${sim[underrated.t].qual}% ondanks lagere pick.`,
+            );
+          if (overrated)
+            vr.push(
+              `<b style="color:var(--miss)">Overschat?</b> ${T[overrated.t].n} is mijn pick maar simuleert op ${overrated.q}% kwalificatie.`,
+            );
+          html += `<div class="simvr">${vr.join(" ")}</div></div></div>`;
         }
         $("#groupgrid").innerHTML = html;
       }
@@ -3400,6 +3629,7 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
           S.results = { ...S.results, ...inc.results };
           S.calls = { ...S.calls, ...(inc.calls || {}) };
           S.reported = { ...S.reported, ...(inc.reported || {}) };
+          S.teamStats = { ...S.teamStats, ...(inc.teamStats || {}) };
           if (inc.notebook && inc.notebook !== S.notebook)
             S.notebook = S.notebook
               ? S.notebook + "\n---\n" + inc.notebook
@@ -3425,7 +3655,7 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
           )
         )
           return;
-        S = { results: {}, calls: {}, reported: {}, notebook: "" };
+        S = { results: {}, calls: {}, reported: {}, teamStats: {}, notebook: "" };
         try {
           await store.del(KEY);
         } catch (e) {}
@@ -3454,9 +3684,9 @@ probs moet optellen tot 100. Behoud de bestaande score als het bewijs geen wijzi
         $("#tab-accuracy").style.display = "none";
         $("#tab-groups").style.display = "none";
         $("#loading").remove();
-        $("#syncbtn").addEventListener("click", () => syncScores(true));
-        $("#aibtn").addEventListener("click", runEngine);
-        $("#oddsbtn").addEventListener("click", () => syncOdds(true));
+        $("#syncbtn")?.addEventListener("click", () => syncScores(true));
+        $("#aibtn")?.addEventListener("click", runEngine);
+        $("#oddsbtn")?.addEventListener("click", () => syncOdds(true));
         renderOddsStamp();
         setInterval(renderOddsStamp, 60 * 1000); // keep "x min geleden" current
         await syncScores(false); // sync on open
